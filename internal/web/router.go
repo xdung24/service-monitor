@@ -11,12 +11,8 @@ import (
 	"github.com/xdung24/service-monitor/internal/web/handlers"
 )
 
-// NewRouter builds and returns the Gin router.
-func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.Handler {
-	r := gin.Default()
-
-	// Register template helper functions before loading templates.
-	r.SetFuncMap(template.FuncMap{
+func templateFuncMap() template.FuncMap {
+	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"deref": func(p *int) int {
 			if p == nil {
@@ -24,17 +20,30 @@ func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.
 			}
 			return *p
 		},
-		// index is already built-in to html/template, but Gin's FuncMap needs it
-		// explicitly when using maps with string keys in templates.
 		"mapget": func(m map[string]string, key string) string {
 			if m == nil {
 				return ""
 			}
 			return m[key]
 		},
-	})
+	}
+}
 
-	r.LoadHTMLGlob("internal/web/templates/*.html")
+func mustParseTemplates() *template.Template {
+	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS, "templates/*.html")
+	if err != nil {
+		panic(err)
+	}
+	return tmpl
+}
+
+// NewRouter builds and returns the Gin router.
+func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.Handler {
+	r := gin.Default()
+
+	// Templates are embedded in the binary at compile time; any parse error
+	// crashes the process immediately at startup.
+	r.SetHTMLTemplate(mustParseTemplates())
 
 	h := handlers.New(db, sched, cfg)
 
@@ -67,6 +76,8 @@ func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.
 		auth.POST("/monitors/:id/delete", h.MonitorDelete)
 		auth.POST("/monitors/:id/pause", h.MonitorPause)
 		auth.POST("/monitors/:id/resume", h.MonitorResume)
+		auth.GET("/monitors/:id/export", h.MonitorExport)
+		auth.POST("/monitors/import", h.MonitorImport)
 
 		// Notifications
 		auth.GET("/notifications", h.NotificationList)

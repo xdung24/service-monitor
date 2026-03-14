@@ -27,6 +27,11 @@ dev:
 test:
 	go test ./... -v
 
+## check-templates: parse all HTML templates for errors
+.PHONY: check-templates
+check-templates:
+	go test ./internal/web/... -run TestTemplatesParse -v
+
 ## lint: run linters
 .PHONY: lint
 lint:

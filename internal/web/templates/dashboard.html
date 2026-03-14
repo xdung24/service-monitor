@@ -12,7 +12,28 @@
     <div class="container">
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
     <h1 class="page-title" style="margin-bottom:0;">Monitors</h1>
-    <a href="/monitors/new" class="btn btn-primary">+ Add Monitor</a>
+    <div style="display:flex; gap:0.5rem;">
+        <button onclick="document.getElementById('import-modal').style.display='flex'" class="btn btn-ghost">&#8593; Import</button>
+        <a href="/monitors/new" class="btn btn-primary">+ Add Monitor</a>
+    </div>
+</div>
+
+<!-- Import modal -->
+<div id="import-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+    <div class="card" style="max-width:420px; width:100%; margin:1rem;">
+        <h2 style="margin-bottom:1rem; font-size:1.1rem;">Import Monitor from JSON</h2>
+        <form method="POST" action="/monitors/import" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="import-file">Select exported .json file</label>
+                <input class="form-control" type="file" id="import-file" name="file" accept=".json,application/json" required />
+            </div>
+            <p style="font-size:0.775rem; color:#64748b; margin-bottom:1rem;">The monitor will be created in <strong>paused</strong> state so you can review settings before activating it.</p>
+            <div style="display:flex; gap:0.75rem;">
+                <button type="submit" class="btn btn-primary">Import</button>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('import-modal').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 {{ if not .Monitors }}
@@ -80,6 +101,7 @@
         <td>
             <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
                 <a href="/monitors/{{ .ID }}/edit" class="btn btn-ghost" style="padding:0.3rem 0.6rem;font-size:0.8rem;">Edit</a>
+                <a href="/monitors/{{ .ID }}/export" class="btn btn-ghost" style="padding:0.3rem 0.6rem;font-size:0.8rem;" title="Download config as JSON">Export</a>
                 {{ if .Active }}
                 <form method="POST" action="/monitors/{{ .ID }}/pause" style="display:inline;">
                     <button class="btn btn-warning" style="padding:0.3rem 0.6rem;font-size:0.8rem;">Pause</button>

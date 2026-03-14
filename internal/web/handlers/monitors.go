@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	neturl "net/url"
 	"strconv"
@@ -132,6 +134,120 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 	_ = h.notifications.ReplaceMonitorLinks(updated.ID, notifIDsFromForm(c))
 	h.sched.Schedule(updated)
 	c.Redirect(http.StatusFound, "/")
+}
+
+// MonitorExport streams a single monitor's config as a downloadable JSON file.
+// The exported file contains only user-editable fields (no ID, no timestamps,
+// no runtime state) plus a schema version for forward-compatibility.
+func (h *Handler) MonitorExport(c *gin.Context) {
+	m, ok := h.getMonitor(c)
+	if !ok {
+		return
+	}
+
+	type exportDoc struct {
+		Schema          string             `json:"schema"`
+		Name            string             `json:"name"`
+		Type            models.MonitorType `json:"type"`
+		URL             string             `json:"url"`
+		IntervalSeconds int                `json:"interval_seconds"`
+		TimeoutSeconds  int                `json:"timeout_seconds"`
+		Retries         int                `json:"retries"`
+		DNSServer       string             `json:"dns_server,omitempty"`
+		DNSRecordType   string             `json:"dns_record_type,omitempty"`
+		DNSExpected     string             `json:"dns_expected,omitempty"`
+	}
+	doc := exportDoc{
+		Schema:          "service-monitor/monitor/v1",
+		Name:            m.Name,
+		Type:            m.Type,
+		URL:             m.URL,
+		IntervalSeconds: m.IntervalSeconds,
+		TimeoutSeconds:  m.TimeoutSeconds,
+		Retries:         m.Retries,
+		DNSServer:       m.DNSServer,
+		DNSRecordType:   m.DNSRecordType,
+		DNSExpected:     m.DNSExpected,
+	}
+
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "Failed to encode monitor"})
+		return
+	}
+
+	filename := fmt.Sprintf("monitor-%s.json", m.Name)
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	c.Data(http.StatusOK, "application/json; charset=utf-8", data)
+}
+
+// MonitorImport handles a JSON file upload, parses it, creates the monitor,
+// and redirects to the edit page so the user can review before first run.
+func (h *Handler) MonitorImport(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "No file uploaded"})
+		return
+	}
+	defer file.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(file, 1<<20)) // 1 MB max
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Failed to read file"})
+		return
+	}
+
+	type importDoc struct {
+		Schema          string             `json:"schema"`
+		Name            string             `json:"name"`
+		Type            models.MonitorType `json:"type"`
+		URL             string             `json:"url"`
+		IntervalSeconds int                `json:"interval_seconds"`
+		TimeoutSeconds  int                `json:"timeout_seconds"`
+		Retries         int                `json:"retries"`
+		DNSServer       string             `json:"dns_server"`
+		DNSRecordType   string             `json:"dns_record_type"`
+		DNSExpected     string             `json:"dns_expected"`
+	}
+
+	var doc importDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Invalid JSON: " + err.Error()})
+		return
+	}
+	if doc.Name == "" || doc.URL == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Imported file is missing required fields: name, url"})
+		return
+	}
+	if doc.IntervalSeconds < 20 {
+		doc.IntervalSeconds = 60
+	}
+	if doc.TimeoutSeconds < 1 {
+		doc.TimeoutSeconds = 30
+	}
+	if doc.DNSRecordType == "" {
+		doc.DNSRecordType = "A"
+	}
+
+	m := &models.Monitor{
+		Name:            doc.Name + " (imported)",
+		Type:            doc.Type,
+		URL:             doc.URL,
+		IntervalSeconds: doc.IntervalSeconds,
+		TimeoutSeconds:  doc.TimeoutSeconds,
+		Retries:         doc.Retries,
+		Active:          false, // start paused so the user can review first
+		DNSServer:       doc.DNSServer,
+		DNSRecordType:   doc.DNSRecordType,
+		DNSExpected:     doc.DNSExpected,
+	}
+
+	id, err := h.monitors.Create(m)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "Failed to save monitor: " + err.Error()})
+		return
+	}
+	c.Redirect(http.StatusFound, fmt.Sprintf("/monitors/%d/edit", id))
 }
 
 // MonitorDelete removes a monitor.
