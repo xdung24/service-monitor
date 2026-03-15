@@ -32,22 +32,3 @@ In this pull request, the following changes are made:
 - [ ] ⚠️ CI passes and is green.
 
 </details>
-
-## Screenshots for Visual Changes
-
-<!--
-If this pull request introduces visual changes, please provide the following details.
-If not, remove this section.
-
-Please upload the image directly here by pasting it or dragging and dropping.
--->
-
-- **UI Modifications**: Highlight any changes made to the user interface.
-- **Before & After**: Include screenshots or comparisons (if applicable).
-
-| Event              | Before                | After                |
-| ------------------ | --------------------- | -------------------- |
-| `UP`               | ![Before](image-link) | ![After](image-link) |
-| `DOWN`             | ![Before](image-link) | ![After](image-link) |
-| Certificate-expiry | ![Before](image-link) | ![After](image-link) |
-| Testing            | ![Before](image-link) | ![After](image-link) |
