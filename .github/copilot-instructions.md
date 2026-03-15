@@ -107,6 +107,10 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 - Single writer (`SetMaxOpenConns(1)`)
 - Migrations are embedded in the binary — never edit existing migration files, always add new ones
 
+## Communication Style
+
+- Do not add emojis or icons to responses unless explicitly asked.
+
 ## Security Notes
 
 - Passwords hashed with `bcrypt.DefaultCost`

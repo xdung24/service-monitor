@@ -19,7 +19,7 @@ import (
 func (h *Handler) MonitorNew(c *gin.Context) {
 	allNotifs, _ := h.notifications.List()
 	c.HTML(http.StatusOK, "monitor_form.html", gin.H{
-		"Monitor":        &models.Monitor{IntervalSeconds: 60, TimeoutSeconds: 30, Retries: 1},
+		"Monitor":        &models.Monitor{IntervalSeconds: 60, TimeoutSeconds: 30, Retries: 1, NotifyOnFailure: true, NotifyOnSuccess: true},
 		"IsNew":          true,
 		"Error":          "",
 		"AllNotifs":      allNotifs,
@@ -173,6 +173,13 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 		HTTPJsonExpected     string             `json:"http_json_expected,omitempty"`
 		HTTPXPath            string             `json:"http_xpath,omitempty"`
 		HTTPXPathExpected    string             `json:"http_xpath_expected,omitempty"`
+		SMTPUseTLS           bool               `json:"smtp_use_tls,omitempty"`
+		SMTPIgnoreTLS        bool               `json:"smtp_ignore_tls,omitempty"`
+		SMTPUsername         string             `json:"smtp_username,omitempty"`
+		// SMTPPassword and HTTPPassword intentionally excluded from exports.
+		NotifyOnFailure bool `json:"notify_on_failure"`
+		NotifyOnSuccess bool `json:"notify_on_success"`
+		NotifyBodyChars int  `json:"notify_body_chars,omitempty"`
 	}
 	doc := exportDoc{
 		Schema:               "service-monitor/monitor/v1",
@@ -200,7 +207,12 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 		HTTPJsonExpected:     m.HTTPJsonExpected,
 		HTTPXPath:            m.HTTPXPath,
 		HTTPXPathExpected:    m.HTTPXPathExpected,
-		// HTTPPassword and PushToken are intentionally excluded from exports.
+		SMTPUseTLS:           m.SMTPUseTLS,
+		SMTPIgnoreTLS:        m.SMTPIgnoreTLS,
+		SMTPUsername:         m.SMTPUsername,
+		NotifyOnFailure:      m.NotifyOnFailure,
+		NotifyOnSuccess:      m.NotifyOnSuccess,
+		NotifyBodyChars:      m.NotifyBodyChars,
 	}
 
 	data, err := json.MarshalIndent(doc, "", "  ")
@@ -256,6 +268,12 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		HTTPJsonExpected     string             `json:"http_json_expected"`
 		HTTPXPath            string             `json:"http_xpath"`
 		HTTPXPathExpected    string             `json:"http_xpath_expected"`
+		SMTPUseTLS           bool               `json:"smtp_use_tls"`
+		SMTPIgnoreTLS        bool               `json:"smtp_ignore_tls"`
+		SMTPUsername         string             `json:"smtp_username"`
+		NotifyOnFailure      bool               `json:"notify_on_failure"`
+		NotifyOnSuccess      bool               `json:"notify_on_success"`
+		NotifyBodyChars      int                `json:"notify_body_chars"`
 	}
 
 	var doc importDoc
@@ -303,6 +321,13 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		HTTPJsonExpected:     doc.HTTPJsonExpected,
 		HTTPXPath:            doc.HTTPXPath,
 		HTTPXPathExpected:    doc.HTTPXPathExpected,
+		SMTPUseTLS:           doc.SMTPUseTLS,
+		SMTPIgnoreTLS:        doc.SMTPIgnoreTLS,
+		SMTPUsername:         doc.SMTPUsername,
+		NotifyOnFailure:      doc.NotifyOnFailure,
+		NotifyOnSuccess:      doc.NotifyOnSuccess,
+		NotifyBodyChars:      doc.NotifyBodyChars,
+		// SMTPPassword is not exported and must be re-entered after import.
 	}
 
 	id, err := h.monitors.Create(m)
@@ -435,6 +460,23 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	httpXPath := c.PostForm("http_xpath")
 	httpXPathExpected := c.PostForm("http_xpath_expected")
 
+	// SMTP fields
+	smtpUseTLS := c.PostForm("smtp_use_tls") == "on"
+	smtpIgnoreTLS := c.PostForm("smtp_ignore_tls") == "on"
+	smtpUsername := c.PostForm("smtp_username")
+	smtpPassword := c.PostForm("smtp_password")
+
+	// Notification trigger settings
+	notifyOnFailure := c.PostForm("notify_on_failure") == "on"
+	notifyOnSuccess := c.PostForm("notify_on_success") == "on"
+	notifyBodyChars, err4 := strconv.Atoi(c.DefaultPostForm("notify_body_chars", "0"))
+	if err4 != nil || notifyBodyChars < 0 {
+		notifyBodyChars = 0
+	}
+	if notifyBodyChars > 4096 {
+		notifyBodyChars = 4096
+	}
+
 	// Always build a partial monitor so error paths never get nil.
 	m := &models.Monitor{
 		Name:                 name,
@@ -464,6 +506,13 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 		HTTPJsonExpected:     httpJsonExpected,
 		HTTPXPath:            httpXPath,
 		HTTPXPathExpected:    httpXPathExpected,
+		SMTPUseTLS:           smtpUseTLS,
+		SMTPIgnoreTLS:        smtpIgnoreTLS,
+		SMTPUsername:         smtpUsername,
+		SMTPPassword:         smtpPassword,
+		NotifyOnFailure:      notifyOnFailure,
+		NotifyOnSuccess:      notifyOnSuccess,
+		NotifyBodyChars:      notifyBodyChars,
 	}
 	if name == "" {
 		return m, &formError{"name is required"}

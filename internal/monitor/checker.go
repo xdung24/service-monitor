@@ -16,9 +16,10 @@ import (
 
 // Result holds the outcome of a single check.
 type Result struct {
-	Status    int // 1=up, 0=down
-	LatencyMs int
-	Message   string
+	Status      int
+	LatencyMs   int
+	Message     string
+	BodyExcerpt string // first N chars of HTTP response body; non-empty only when NotifyBodyChars > 0
 }
 
 // Checker is something that can check a monitor.
@@ -51,6 +52,8 @@ func checkerFor(m *models.Monitor) Checker {
 		return &TCPChecker{}
 	case models.MonitorTypePing:
 		return &PingChecker{}
+	case models.MonitorTypeSMTP:
+		return &SMTPChecker{}
 	default:
 		return &HTTPChecker{}
 	}
@@ -160,7 +163,7 @@ func (c *HTTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 
 	// Read response body once when any body-based check is configured.
 	var body []byte
-	if m.HTTPKeyword != "" || m.HTTPJsonPath != "" || m.HTTPXPath != "" {
+	if m.HTTPKeyword != "" || m.HTTPJsonPath != "" || m.HTTPXPath != "" || m.NotifyBodyChars > 0 {
 		body, err = io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB cap
 		if err != nil {
 			return Result{Status: 0, LatencyMs: latency, Message: fmt.Sprintf("read body: %v", err)}
@@ -188,7 +191,15 @@ func (c *HTTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 		return Result{Status: 0, LatencyMs: latency, Message: msg}
 	}
 
-	return Result{Status: 1, LatencyMs: latency, Message: statusMsg}
+	r := Result{Status: 1, LatencyMs: latency, Message: statusMsg}
+	if m.NotifyBodyChars > 0 && len(body) > 0 {
+		excerpt := strings.TrimSpace(string(body))
+		if len(excerpt) > m.NotifyBodyChars {
+			excerpt = excerpt[:m.NotifyBodyChars]
+		}
+		r.BodyExcerpt = excerpt
+	}
+	return r
 }
 
 // isStatusAccepted reports whether code is in the accepted set.

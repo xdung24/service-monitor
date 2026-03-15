@@ -11,6 +11,7 @@ const (
 	MonitorTypePing MonitorType = "ping"
 	MonitorTypeDNS  MonitorType = "dns"
 	MonitorTypePush MonitorType = "push"
+	MonitorTypeSMTP MonitorType = "smtp"
 )
 
 // Monitor represents a monitored target.
@@ -49,6 +50,17 @@ type Monitor struct {
 	HTTPJsonExpected  string `db:"http_json_expected"`  // expected value; empty = just check path exists
 	HTTPXPath         string `db:"http_xpath"`          // XPath expression e.g. //status
 	HTTPXPathExpected string `db:"http_xpath_expected"` // expected value; empty = just check node exists
+
+	// SMTP monitor fields
+	SMTPUseTLS    bool   `db:"smtp_use_tls"`    // use implicit TLS / SMTPS (port 465)
+	SMTPIgnoreTLS bool   `db:"smtp_ignore_tls"` // skip TLS certificate verification
+	SMTPUsername  string `db:"smtp_username"`   // optional AUTH PLAIN username
+	SMTPPassword  string `db:"smtp_password"`   // optional AUTH PLAIN password
+
+	// Notification trigger settings
+	NotifyOnFailure bool `db:"notify_on_failure"` // send notification when check result is DOWN
+	NotifyOnSuccess bool `db:"notify_on_success"` // send notification when check result is UP
+	NotifyBodyChars int  `db:"notify_body_chars"` // include up to N chars of HTTP response body in notification; 0 = disabled
 
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`

@@ -171,6 +171,14 @@ func (s *Scheduler) maybeNotify(m *models.Monitor, result monitor.Result) {
 		return
 	}
 
+	// Respect per-monitor notification trigger settings.
+	if result.Status == 0 && !m.NotifyOnFailure {
+		return
+	}
+	if result.Status == 1 && !m.NotifyOnSuccess {
+		return
+	}
+
 	// Skip if status did not change relative to last notification.
 	if lastNotified != nil && *lastNotified == result.Status {
 		return
@@ -202,13 +210,17 @@ func (s *Scheduler) maybeNotify(m *models.Monitor, result monitor.Result) {
 		})
 	}
 
+	msg := result.Message
+	if result.BodyExcerpt != "" {
+		msg = result.Message + "\n\nResponse body:\n" + result.BodyExcerpt
+	}
 	event := notifier.Event{
 		MonitorID:   m.ID,
 		MonitorName: m.Name,
 		MonitorURL:  m.URL,
 		Status:      result.Status,
 		LatencyMs:   result.LatencyMs,
-		Message:     result.Message,
+		Message:     msg,
 	}
 
 	results := notifier.SendAll(s.ctx, configs, event)

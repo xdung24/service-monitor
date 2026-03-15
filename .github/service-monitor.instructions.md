@@ -90,9 +90,18 @@ HTTPJsonPath          // JSONPath e.g. $.status
 HTTPJsonExpected      // empty = just check path exists
 HTTPXPath             // XPath e.g. //status or //*[local-name()='tag']
 HTTPXPathExpected     // empty = just check node exists
+// SMTP monitor fields (migration 0009)
+SMTPUseTLS            // bool: implicit TLS (SMTPS / port 465)
+SMTPIgnoreTLS         // bool: skip TLS certificate verification
+SMTPUsername          // string: AUTH PLAIN username (empty = no auth)
+SMTPPassword          // string: AUTH PLAIN password
+// Notification trigger settings (migration 0010)
+NotifyOnFailure       // bool: send notification on DOWN (default true)
+NotifyOnSuccess       // bool: send notification on UP/recovery (default true)
+NotifyBodyChars       // int: include first N chars of HTTP body in notification (0 = disabled, max 4096)
 ```
 
-## Store SQL Column Order (30 columns)
+## Store SQL Column Order (37 columns)
 
 All SELECT queries in store.go must follow this order exactly:
 ```
@@ -103,6 +112,8 @@ http_username, http_password, http_bearer_token, http_max_redirects,
 push_token,
 http_header_name, http_header_value, http_body_type,
 http_json_path, http_json_expected, http_xpath, http_xpath_expected,
+smtp_use_tls, smtp_ignore_tls, smtp_username, smtp_password,
+notify_on_failure, notify_on_success, notify_body_chars,
 created_at, updated_at
 ```
 

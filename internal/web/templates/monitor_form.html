@@ -31,6 +31,7 @@
                 <option value="tcp"   {{ if eq .Monitor.Type "tcp"   }}selected{{ end }}>TCP Port</option>
                 <option value="ping"  {{ if eq .Monitor.Type "ping"  }}selected{{ end }}>Ping (Host)</option>
                 <option value="dns"   {{ if eq .Monitor.Type "dns"   }}selected{{ end }}>DNS</option>
+                <option value="smtp"  {{ if eq .Monitor.Type "smtp"  }}selected{{ end }}>SMTP</option>
                 <option value="push"  {{ if eq .Monitor.Type "push"  }}selected{{ end }}>Push (Heartbeat)</option>
             </select>
         </div>
@@ -193,6 +194,51 @@
                     Same comparison prefix operators as JSONPath. Leave blank to only check the node exists.
                 </small>
             </div>
+
+            <div class="form-group">
+                <label for="notify_body_chars">Include Response Body in Notification <span style="color:#64748b; font-weight:400;">(characters)</span></label>
+                <input class="form-control" type="number" id="notify_body_chars" name="notify_body_chars"
+                       value="{{ .Monitor.NotifyBodyChars }}" min="0" max="4096"
+                       placeholder="0" style="max-width:10rem;" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Prepend up to N characters of the HTTP response body to notification messages. Set to 0 to disable.
+                    Useful for including API error details in alerts.
+                </small>
+            </div>
+        </div>
+
+        <!-- SMTP options (shown only for smtp type) -->
+        <div id="smtp-fields" style="display:{{ if eq .Monitor.Type "smtp" }}block{{ else }}none{{ end }};">
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="smtp_use_tls" value="on"
+                           {{ if .Monitor.SMTPUseTLS }}checked{{ end }} />
+                    Use Implicit TLS — SMTPS (port 465)
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="smtp_ignore_tls" value="on"
+                           {{ if .Monitor.SMTPIgnoreTLS }}checked{{ end }} />
+                    Ignore / skip TLS certificate errors
+                </label>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="smtp_username">Auth Username <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                    <input class="form-control" type="text" id="smtp_username" name="smtp_username"
+                           value="{{ .Monitor.SMTPUsername }}" autocomplete="off"
+                           placeholder="user@example.com" />
+                </div>
+                <div class="form-group">
+                    <label for="smtp_password">Auth Password</label>
+                    <input class="form-control" type="password" id="smtp_password" name="smtp_password"
+                           value="{{ .Monitor.SMTPPassword }}" autocomplete="new-password" />
+                </div>
+            </div>
+            <small style="color:#64748b; font-size:0.775rem; display:block; margin-bottom:0.75rem; margin-top:-0.25rem;">
+                Leave username/password blank to only test connectivity (EHLO).
+                When set, AUTH PLAIN credentials are verified.
+                STARTTLS is used automatically when advertised by the server (unless Implicit TLS is enabled).
+            </small>
         </div>
 
         <!-- Push / Heartbeat info (shown only for push type) -->
@@ -242,6 +288,28 @@
                 <input class="form-control" type="number" id="retries" name="retries"
                        value="{{ .Monitor.Retries }}" min="0" max="10" />
             </div>
+        </div>
+        <div class="form-group" style="margin-top:1.25rem;">
+            <div style="margin:0 0 0.75rem; padding-top:1rem; border-top:1px solid #334155;">
+                <span style="font-size:0.75rem; color:#64748b; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Notification Triggers</span>
+            </div>
+            <div style="display:flex; gap:2rem; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="notify_on_failure" value="on"
+                           {{ if .Monitor.NotifyOnFailure }}checked{{ end }}
+                           style="width:1rem; height:1rem; accent-color:#f87171; cursor:pointer;" />
+                    Notify on <strong style="color:#f87171;">DOWN</strong> (failure)
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="notify_on_success" value="on"
+                           {{ if .Monitor.NotifyOnSuccess }}checked{{ end }}
+                           style="width:1rem; height:1rem; accent-color:#4ade80; cursor:pointer;" />
+                    Notify on <strong style="color:#4ade80;">UP</strong> (recovery)
+                </label>
+            </div>
+            <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.4rem;">
+                Notifications only fire when the monitor <em>changes</em> state. Uncheck both to silence all alerts.
+            </small>
         </div>
         <div class="form-group" style="margin-top:1.25rem;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
@@ -313,6 +381,7 @@ function toggleTypeFields() {
     var t = document.getElementById('type').value;
     document.getElementById('dns-fields').style.display  = (t === 'dns')  ? 'block' : 'none';
     document.getElementById('http-fields').style.display = (t === 'http') ? 'block' : 'none';
+    document.getElementById('smtp-fields').style.display = (t === 'smtp') ? 'block' : 'none';
     document.getElementById('push-fields').style.display = (t === 'push') ? 'block' : 'none';
     // Show/hide the URL input group — not needed for push monitors.
     document.getElementById('url-group').style.display = (t === 'push') ? 'none' : 'block';
@@ -321,6 +390,8 @@ function toggleTypeFields() {
         urlInput.placeholder = 'Domain to query, e.g. example.com';
     } else if (t === 'tcp') {
         urlInput.placeholder = 'host:port, e.g. example.com:443';
+    } else if (t === 'smtp') {
+        urlInput.placeholder = 'host:port, e.g. smtp.example.com:587';
     } else if (t === 'ping') {
         urlInput.placeholder = 'Hostname or IP, e.g. 8.8.8.8';
     } else {

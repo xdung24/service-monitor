@@ -15,10 +15,11 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | DNS | ✅ Done | A/AAAA/CNAME/MX/NS/TXT/PTR; optional expected-value assertion |
 | Push / Heartbeat | ✅ Done | `GET /push/:token` endpoint; token stored on monitor; scheduler skips push monitors |
 | HTTP — Keyword match | ✅ Done | Scan response body for substring; optional invert flag |
-| HTTP — JSON Query | ⬜ Planned | JSONPath expression + operator on response |
+| HTTP — JSON Query | ✅ Done | JSONPath expression + optional expected value assertion |
+| HTTP — XML / SOAP XPath Query | ✅ Done | XPath expression on XML/SOAP response body + optional expected value assertion |
 | HTTP — Accepted status codes | ✅ Done | Comma-separated list, e.g. `200,404`; empty = 2xx/3xx |
 | WebSocket Upgrade | ⬜ Planned | Verify WS handshake succeeds |
-| SMTP | ⬜ Planned | Connect + optional EHLO |
+| SMTP | ✅ Done | EHLO + optional STARTTLS + optional AUTH PLAIN |
 | SNMP | ⬜ Planned | Get OID value, optional assert |
 | MQTT | ⬜ Planned | Subscribe, verify broker responds |
 | Docker Container | ⬜ Planned | Container running/healthy via Docker socket or HTTP API |
@@ -55,7 +56,7 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | Custom request headers | ⬜ Planned | Key-value list |
 | Custom request body | ✅ Done | HTTP method select (GET/HEAD/POST/PUT/PATCH/OPTIONS) |
 | Keyword match in body | ✅ Done | (see Monitor Types above) |
-| JSON path query | ⬜ Planned | (see Monitor Types above) |
+| JSON path query | ✅ Done | (see Monitor Types above) |
 | Redirect follow control | ✅ Done | Max redirects (0 = no-follow) |
 | Proxy per-monitor | ⬜ Planned | HTTP/SOCKS5 proxy per check |
 
