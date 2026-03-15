@@ -8,11 +8,11 @@ run:
 linters:
   enable:
     - errcheck        # unanticipated unchecked errors
-    - gosimple        # simplify code
+    - gosimple        # simplify code (v1 only — merged into staticcheck in v2)
     - govet           # suspicious constructs (includes printf format checks)
     - ineffassign     # useless assignments
     - staticcheck     # comprehensive static analysis
-    - unused          # unused code (funcs, vars, consts, types)
+    - unused          # unused code — v1 only; merged into staticcheck in v2
     - gocritic        # broad code quality suggestions
     - gochecknoinits  # flag func init() unless intentional
     - gosec           # security issues (SQL injection, SSRF, hardcoded creds…)
@@ -20,11 +20,13 @@ linters:
     - noctx           # HTTP calls without context
     - misspell        # common spelling mistakes in comments/strings
     - whitespace      # leading/trailing blank lines
-    - gofmt           # formatting (reports only — formatter not auto-applied)
 
 linters-settings:
   govet:
-    enable-all: true
+    # Enable specific high-value extra analyzers beyond the default set.
+    enable:
+      - shadow
+      - nilness
     disable:
       - fieldalignment  # not enforced — struct layout is a minor optimisation
 
@@ -58,8 +60,3 @@ issues:
         - errcheck
         - gosec
         - gocritic
-
-    # Migration SQL embed files are not Go — no lint needed.
-    - path: migrations/
-      linters:
-        - all

@@ -39,6 +39,8 @@ jobs:
         uses: reviewdog/action-golangci-lint@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Pin to a specific v1 release to avoid breaking config changes in v2.
+          golangci_lint_version: v1.64.8
           golangci_lint_flags: "--config=.golangci.yml --timeout=5m"
           # github-pr-review posts inline comments; use github-check for
           # annotations only (no PR comments permissions needed).
