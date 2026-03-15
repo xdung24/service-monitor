@@ -27,12 +27,18 @@
         <div class="form-group">
             <label for="type">Monitor Type</label>
             <select class="form-control" id="type" name="type" onchange="toggleTypeFields()">
-                <option value="http"  {{ if eq .Monitor.Type "http"  }}selected{{ end }}>HTTP / HTTPS</option>
-                <option value="tcp"   {{ if eq .Monitor.Type "tcp"   }}selected{{ end }}>TCP Port</option>
-                <option value="ping"  {{ if eq .Monitor.Type "ping"  }}selected{{ end }}>Ping (Host)</option>
-                <option value="dns"   {{ if eq .Monitor.Type "dns"   }}selected{{ end }}>DNS</option>
-                <option value="smtp"  {{ if eq .Monitor.Type "smtp"  }}selected{{ end }}>SMTP</option>
-                <option value="push"  {{ if eq .Monitor.Type "push"  }}selected{{ end }}>Push (Heartbeat)</option>
+                <option value="http"     {{ if eq .Monitor.Type "http"     }}selected{{ end }}>HTTP / HTTPS</option>
+                <option value="tcp"      {{ if eq .Monitor.Type "tcp"      }}selected{{ end }}>TCP Port</option>
+                <option value="ping"     {{ if eq .Monitor.Type "ping"     }}selected{{ end }}>Ping (Host)</option>
+                <option value="dns"      {{ if eq .Monitor.Type "dns"      }}selected{{ end }}>DNS</option>
+                <option value="smtp"     {{ if eq .Monitor.Type "smtp"     }}selected{{ end }}>SMTP</option>
+                <option value="push"     {{ if eq .Monitor.Type "push"     }}selected{{ end }}>Push (Heartbeat)</option>
+                <optgroup label="Database">
+                    <option value="mysql"    {{ if eq .Monitor.Type "mysql"    }}selected{{ end }}>MySQL / MariaDB</option>
+                    <option value="postgres" {{ if eq .Monitor.Type "postgres" }}selected{{ end }}>PostgreSQL</option>
+                    <option value="redis"    {{ if eq .Monitor.Type "redis"    }}selected{{ end }}>Redis</option>
+                    <option value="mongodb"  {{ if eq .Monitor.Type "mongodb"  }}selected{{ end }}>MongoDB</option>
+                </optgroup>
             </select>
         </div>
         <div id="url-group" class="form-group">
@@ -266,6 +272,30 @@
 
         <!-- Push / Heartbeat info (shown only for push type) -->
         <div id="push-fields" style="display:{{ if eq .Monitor.Type "push" }}block{{ else }}none{{ end }};">
+
+
+        <!-- Database monitor options (mysql, postgres, redis, mongodb) -->
+        {{ $isDB := or (eq .Monitor.Type "mysql") (or (eq .Monitor.Type "postgres") (or (eq .Monitor.Type "redis") (eq .Monitor.Type "mongodb"))) }}
+        <div id="db-fields" style="display:{{ if $isDB }}block{{ else }}none{{ end }};">
+            <div class="form-group">
+                <label for="db_query">Test Query / Command <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                <input class="form-control" type="text" id="db_query" name="db_query"
+                       value="{{ .Monitor.DBQuery }}"
+                       placeholder="MySQL/PostgreSQL: SELECT 1 — MongoDB: {&quot;ping&quot;:1} — Redis: leave blank" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Leave blank to only test connectivity (connect + ping).
+                    MySQL/PostgreSQL: any valid SQL query (e.g. <code>SELECT 1</code>).
+                    MongoDB: an Extended JSON admin command (e.g. <code>{"ping":1}</code>).
+                    Redis: field is ignored (PING is always used).
+                </small>
+            </div>
+            <small style="color:#64748b; font-size:0.775rem; display:block; margin-bottom:0.75rem;">
+                <strong>MySQL / MariaDB</strong> — URL format: <code>user:pass@tcp(host:port)/dbname</code><br/>
+                <strong>PostgreSQL</strong> — URL format: <code>postgres://user:pass@host:port/dbname?sslmode=disable</code><br/>
+                <strong>Redis</strong> — URL format: <code>host:port</code> or <code>username:password@host:port</code><br/>
+                <strong>MongoDB</strong> — URL format: <code>mongodb://user:pass@host:port/dbname</code>
+            </small>
+        </div>
             <input type="hidden" name="push_token" value="{{ .Monitor.PushToken }}" />
             {{ if .Monitor.PushToken }}
             <div class="form-group">
@@ -408,10 +438,15 @@ function toggleRequestBody() {
 }
 function toggleTypeFields() {
     var t = document.getElementById('type').value;
+    var isDB = (t === 'mysql' || t === 'postgres' || t === 'redis' || t === 'mongodb');
     document.getElementById('dns-fields').style.display  = (t === 'dns')  ? 'block' : 'none';
     document.getElementById('http-fields').style.display = (t === 'http') ? 'block' : 'none';
     document.getElementById('smtp-fields').style.display = (t === 'smtp') ? 'block' : 'none';
-    document.getElementById('push-fields').style.display = (t === 'push') ? 'block' : 'none';
+    document.getElementById('push-fields').style.display = (t === 'push') ? 'none'  : 'none';
+    document.getElementById('db-fields').style.display   = isDB ? 'block' : 'none';
+    // push-fields is always rendered inside its own open block; reset individually
+    var pf = document.getElementById('push-fields');
+    if (pf) pf.style.display = (t === 'push') ? 'block' : 'none';
     // Show/hide the URL input group — not needed for push monitors.
     document.getElementById('url-group').style.display = (t === 'push') ? 'none' : 'block';
     var urlInput = document.getElementById('url');
@@ -423,6 +458,14 @@ function toggleTypeFields() {
         urlInput.placeholder = 'host:port, e.g. smtp.example.com:587';
     } else if (t === 'ping') {
         urlInput.placeholder = 'Hostname or IP, e.g. 8.8.8.8';
+    } else if (t === 'mysql') {
+        urlInput.placeholder = 'user:pass@tcp(host:port)/dbname';
+    } else if (t === 'postgres') {
+        urlInput.placeholder = 'postgres://user:pass@host:port/dbname?sslmode=disable';
+    } else if (t === 'redis') {
+        urlInput.placeholder = 'host:port  or  username:password@host:port';
+    } else if (t === 'mongodb') {
+        urlInput.placeholder = 'mongodb://user:pass@host:port/dbname';
     } else {
         urlInput.placeholder = 'https://example.com  or  host:port  or  hostname';
     }

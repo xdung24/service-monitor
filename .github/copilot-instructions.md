@@ -31,10 +31,10 @@ internal/
   config/                Env-based config (LISTEN_ADDR, DATA_DIR, SECRET_KEY)
   database/              SQLite open/close + migration runners + per-user Registry
     migrations_users/    Embedded SQL for shared users.db  (users + push_tokens tables)
-    migrations_user/     Embedded SQL for per-user data.db (monitors, heartbeats, notifications, …)
+    migrations_user/     Embedded SQL for per-user data.db (monitors, heartbeats, notifications, …; 0001_init + 0002_db_monitor)
     registry.go          Registry — lazily opens & caches per-user *sql.DB connections
   models/                Data types (Monitor, Heartbeat, User) + DB stores
-  monitor/               Monitor checker implementations (HTTP, TCP, Ping, DNS, SMTP, Push)
+  monitor/               Monitor checker implementations (HTTP, TCP, Ping, DNS, SMTP, Push, MySQL, PostgreSQL, Redis, MongoDB)
   scheduler/             Goroutine-per-monitor periodic check scheduler + MultiScheduler
   notifier/              Notification providers (Slack, Discord, ntfy, Telegram, Email, Webhook)
   web/
@@ -125,12 +125,12 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 ## Adding a New Monitor Type
 
 1. Add a constant to `internal/models/models.go` (`MonitorTypeFoo MonitorType = "foo"`)
-2. If the type needs extra DB columns, create migration `NNNN_foo_fields.up.sql` / `.down.sql`
-3. Update `Monitor` struct and all SQL queries in `internal/models/store.go`
-4. Implement `Checker` interface in `internal/monitor/checker.go` (or a new file)
+2. If the type needs extra DB columns, create migration `NNNN_foo_fields.up.sql` / `.down.sql` in `migrations_user/`; add the column to **all five** queries in `store.go` (`List`, `Get`, `Create`, `Update`, `GetByPushToken`)
+3. Update the `Monitor` struct in `internal/models/models.go` with the new field(s)
+4. Implement `Checker` interface in a new `internal/monitor/checker_<type>.go` file
 5. Register it in `checkerFor()` switch in `checker.go`
 6. Add the `<option>` to `monitor_form.html`; add any type-specific form fields with JS show/hide
-7. Update `monitorFromForm()` in `internal/web/handlers/monitors.go` to parse the new fields
+7. Update `monitorFromForm()` in `internal/web/handlers/monitors.go` to parse the new fields; update export/import structs too
 8. Mark the feature `✅ Done` in `FEATURES.md`
 
 ## Adding a New Notification Provider

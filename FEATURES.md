@@ -23,11 +23,11 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | SNMP | ⬜ Planned | Get OID value, optional assert |
 | MQTT | ⬜ Planned | Subscribe, verify broker responds |
 | Docker Container | ⬜ Planned | Container running/healthy via Docker socket or HTTP API |
-| MySQL / MariaDB | ⬜ Planned | TCP + `SELECT 1` |
-| PostgreSQL | ⬜ Planned | TCP + `SELECT 1` |
+| MySQL / MariaDB | ✅ Done | Connection string DSN + optional query (default `SELECT 1`) |
+| PostgreSQL | ✅ Done | Connection string DSN + optional query (default `SELECT 1`) |
 | Microsoft SQL Server | ⬜ Planned | TCP + simple query |
-| MongoDB | ⬜ Planned | Ping command |
-| Redis | ⬜ Planned | `PING` command |
+| MongoDB | ✅ Done | mongo-driver ping + optional admin command (e.g. `{"ping":1}`) |
+| Redis | ✅ Done | Raw RESP PING/PONG; optional AUTH (Redis 6+ ACL); `host:port` or `user:pass@host:port` |
 | RabbitMQ | ⬜ Planned | Management API health check |
 | gRPC Keyword | ⬜ Planned | gRPC call, keyword match on response |
 | SIP Options | ⬜ Planned | SIP OPTIONS request |

@@ -206,9 +206,10 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 		SMTPIgnoreTLS        bool               `json:"smtp_ignore_tls,omitempty"`
 		SMTPUsername         string             `json:"smtp_username,omitempty"`
 		// SMTPPassword and HTTPPassword intentionally excluded from exports.
-		NotifyOnFailure bool `json:"notify_on_failure"`
-		NotifyOnSuccess bool `json:"notify_on_success"`
-		NotifyBodyChars int  `json:"notify_body_chars,omitempty"`
+		DBQuery         string `json:"db_query,omitempty"`
+		NotifyOnFailure bool   `json:"notify_on_failure"`
+		NotifyOnSuccess bool   `json:"notify_on_success"`
+		NotifyBodyChars int    `json:"notify_body_chars,omitempty"`
 	}
 	doc := exportDoc{
 		Schema:               "service-monitor/monitor/v1",
@@ -239,6 +240,7 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 		SMTPUseTLS:           m.SMTPUseTLS,
 		SMTPIgnoreTLS:        m.SMTPIgnoreTLS,
 		SMTPUsername:         m.SMTPUsername,
+		DBQuery:              m.DBQuery,
 		NotifyOnFailure:      m.NotifyOnFailure,
 		NotifyOnSuccess:      m.NotifyOnSuccess,
 		NotifyBodyChars:      m.NotifyBodyChars,
@@ -300,6 +302,7 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		SMTPUseTLS           bool               `json:"smtp_use_tls"`
 		SMTPIgnoreTLS        bool               `json:"smtp_ignore_tls"`
 		SMTPUsername         string             `json:"smtp_username"`
+		DBQuery              string             `json:"db_query"`
 		NotifyOnFailure      bool               `json:"notify_on_failure"`
 		NotifyOnSuccess      bool               `json:"notify_on_success"`
 		NotifyBodyChars      int                `json:"notify_body_chars"`
@@ -353,6 +356,7 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		SMTPUseTLS:           doc.SMTPUseTLS,
 		SMTPIgnoreTLS:        doc.SMTPIgnoreTLS,
 		SMTPUsername:         doc.SMTPUsername,
+		DBQuery:              doc.DBQuery,
 		NotifyOnFailure:      doc.NotifyOnFailure,
 		NotifyOnSuccess:      doc.NotifyOnSuccess,
 		NotifyBodyChars:      doc.NotifyBodyChars,
@@ -534,6 +538,9 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	smtpUsername := c.PostForm("smtp_username")
 	smtpPassword := c.PostForm("smtp_password")
 
+	// Database monitor fields
+	dbQuery := c.PostForm("db_query")
+
 	// Notification trigger settings
 	notifyOnFailure := c.PostForm("notify_on_failure") == "on"
 	notifyOnSuccess := c.PostForm("notify_on_success") == "on"
@@ -580,6 +587,7 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 		SMTPIgnoreTLS:        smtpIgnoreTLS,
 		SMTPUsername:         smtpUsername,
 		SMTPPassword:         smtpPassword,
+		DBQuery:              dbQuery,
 		NotifyOnFailure:      notifyOnFailure,
 		NotifyOnSuccess:      notifyOnSuccess,
 		NotifyBodyChars:      notifyBodyChars,

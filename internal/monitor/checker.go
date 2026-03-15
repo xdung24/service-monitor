@@ -54,6 +54,14 @@ func checkerFor(m *models.Monitor) Checker {
 		return &PingChecker{}
 	case models.MonitorTypeSMTP:
 		return &SMTPChecker{}
+	case models.MonitorTypeMySQL:
+		return &MySQLChecker{}
+	case models.MonitorTypePostgres:
+		return &PostgresChecker{}
+	case models.MonitorTypeRedis:
+		return &RedisChecker{}
+	case models.MonitorTypeMongoDB:
+		return &MongoDBChecker{}
 	default:
 		return &HTTPChecker{}
 	}
