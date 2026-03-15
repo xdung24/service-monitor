@@ -20,7 +20,13 @@ func NewMonitorStore(db *sql.DB) *MonitorStore {
 func (s *MonitorStore) List() ([]*Monitor, error) {
 	rows, err := s.db.Query(`
 		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
-		       dns_server, dns_record_type, dns_expected, created_at, updated_at
+		       dns_server, dns_record_type, dns_expected,
+		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
+		       http_username, http_password, http_bearer_token, http_max_redirects,
+		       push_token,
+		       http_header_name, http_header_value, http_body_type,
+		       http_json_path, http_json_expected, http_xpath, http_xpath_expected,
+		       created_at, updated_at
 		FROM monitors ORDER BY id ASC
 	`)
 	if err != nil {
@@ -33,7 +39,13 @@ func (s *MonitorStore) List() ([]*Monitor, error) {
 		m := &Monitor{}
 		if err := rows.Scan(&m.ID, &m.Name, &m.Type, &m.URL, &m.IntervalSeconds,
 			&m.TimeoutSeconds, &m.Active, &m.Retries, &m.DNSServer,
-			&m.DNSRecordType, &m.DNSExpected, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			&m.DNSRecordType, &m.DNSExpected,
+			&m.HTTPAcceptedStatuses, &m.HTTPIgnoreTLS, &m.HTTPMethod, &m.HTTPKeyword, &m.HTTPKeywordInvert,
+			&m.HTTPUsername, &m.HTTPPassword, &m.HTTPBearerToken, &m.HTTPMaxRedirects,
+			&m.PushToken,
+			&m.HTTPHeaderName, &m.HTTPHeaderValue, &m.HTTPBodyType,
+			&m.HTTPJsonPath, &m.HTTPJsonExpected, &m.HTTPXPath, &m.HTTPXPathExpected,
+			&m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, err
 		}
 		monitors = append(monitors, m)
@@ -46,11 +58,23 @@ func (s *MonitorStore) Get(id int64) (*Monitor, error) {
 	m := &Monitor{}
 	err := s.db.QueryRow(`
 		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
-		       dns_server, dns_record_type, dns_expected, created_at, updated_at
+		       dns_server, dns_record_type, dns_expected,
+		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
+		       http_username, http_password, http_bearer_token, http_max_redirects,
+		       push_token,
+		       http_header_name, http_header_value, http_body_type,
+		       http_json_path, http_json_expected, http_xpath, http_xpath_expected,
+		       created_at, updated_at
 		FROM monitors WHERE id = ?
 	`, id).Scan(&m.ID, &m.Name, &m.Type, &m.URL, &m.IntervalSeconds,
 		&m.TimeoutSeconds, &m.Active, &m.Retries, &m.DNSServer,
-		&m.DNSRecordType, &m.DNSExpected, &m.CreatedAt, &m.UpdatedAt)
+		&m.DNSRecordType, &m.DNSExpected,
+		&m.HTTPAcceptedStatuses, &m.HTTPIgnoreTLS, &m.HTTPMethod, &m.HTTPKeyword, &m.HTTPKeywordInvert,
+		&m.HTTPUsername, &m.HTTPPassword, &m.HTTPBearerToken, &m.HTTPMaxRedirects,
+		&m.PushToken,
+		&m.HTTPHeaderName, &m.HTTPHeaderValue, &m.HTTPBodyType,
+		&m.HTTPJsonPath, &m.HTTPJsonExpected, &m.HTTPXPath, &m.HTTPXPathExpected,
+		&m.CreatedAt, &m.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -62,10 +86,22 @@ func (s *MonitorStore) Create(m *Monitor) (int64, error) {
 	now := time.Now()
 	res, err := s.db.Exec(`
 		INSERT INTO monitors (name, type, url, interval_seconds, timeout_seconds, active, retries,
-		                      dns_server, dns_record_type, dns_expected, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		                      dns_server, dns_record_type, dns_expected,
+		                      http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
+		                      http_username, http_password, http_bearer_token, http_max_redirects,
+		                      push_token,
+		                      http_header_name, http_header_value, http_body_type,
+		                      http_json_path, http_json_expected, http_xpath, http_xpath_expected,
+		                      created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, m.Name, m.Type, m.URL, m.IntervalSeconds, m.TimeoutSeconds, m.Active, m.Retries,
-		m.DNSServer, m.DNSRecordType, m.DNSExpected, now, now)
+		m.DNSServer, m.DNSRecordType, m.DNSExpected,
+		m.HTTPAcceptedStatuses, m.HTTPIgnoreTLS, m.HTTPMethod, m.HTTPKeyword, m.HTTPKeywordInvert,
+		m.HTTPUsername, m.HTTPPassword, m.HTTPBearerToken, m.HTTPMaxRedirects,
+		m.PushToken,
+		m.HTTPHeaderName, m.HTTPHeaderValue, m.HTTPBodyType,
+		m.HTTPJsonPath, m.HTTPJsonExpected, m.HTTPXPath, m.HTTPXPathExpected,
+		now, now)
 	if err != nil {
 		return 0, err
 	}
@@ -76,9 +112,21 @@ func (s *MonitorStore) Create(m *Monitor) (int64, error) {
 func (s *MonitorStore) Update(m *Monitor) error {
 	_, err := s.db.Exec(`
 		UPDATE monitors SET name=?, type=?, url=?, interval_seconds=?, timeout_seconds=?,
-		active=?, retries=?, dns_server=?, dns_record_type=?, dns_expected=?, updated_at=? WHERE id=?
+		active=?, retries=?, dns_server=?, dns_record_type=?, dns_expected=?,
+		http_accepted_statuses=?, http_ignore_tls=?, http_method=?, http_keyword=?, http_keyword_invert=?,
+		http_username=?, http_password=?, http_bearer_token=?, http_max_redirects=?,
+		push_token=?,
+		http_header_name=?, http_header_value=?, http_body_type=?,
+		http_json_path=?, http_json_expected=?, http_xpath=?, http_xpath_expected=?,
+		updated_at=? WHERE id=?
 	`, m.Name, m.Type, m.URL, m.IntervalSeconds, m.TimeoutSeconds, m.Active, m.Retries,
-		m.DNSServer, m.DNSRecordType, m.DNSExpected, time.Now(), m.ID)
+		m.DNSServer, m.DNSRecordType, m.DNSExpected,
+		m.HTTPAcceptedStatuses, m.HTTPIgnoreTLS, m.HTTPMethod, m.HTTPKeyword, m.HTTPKeywordInvert,
+		m.HTTPUsername, m.HTTPPassword, m.HTTPBearerToken, m.HTTPMaxRedirects,
+		m.PushToken,
+		m.HTTPHeaderName, m.HTTPHeaderValue, m.HTTPBodyType,
+		m.HTTPJsonPath, m.HTTPJsonExpected, m.HTTPXPath, m.HTTPXPathExpected,
+		time.Now(), m.ID)
 	return err
 }
 
@@ -229,6 +277,34 @@ func (s *MonitorStore) GetLastStatuses(id int64) (lastStatus, lastNotified *int,
 		lastNotified = &v
 	}
 	return lastStatus, lastNotified, nil
+}
+
+// GetByPushToken returns the monitor with the given push token, or nil if not found.
+func (s *MonitorStore) GetByPushToken(token string) (*Monitor, error) {
+	m := &Monitor{}
+	err := s.db.QueryRow(`
+		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
+		       dns_server, dns_record_type, dns_expected,
+		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
+		       http_username, http_password, http_bearer_token, http_max_redirects,
+		       push_token,
+		       http_header_name, http_header_value, http_body_type,
+		       http_json_path, http_json_expected, http_xpath, http_xpath_expected,
+		       created_at, updated_at
+		FROM monitors WHERE push_token = ? AND push_token != ''
+	`, token).Scan(&m.ID, &m.Name, &m.Type, &m.URL, &m.IntervalSeconds,
+		&m.TimeoutSeconds, &m.Active, &m.Retries, &m.DNSServer,
+		&m.DNSRecordType, &m.DNSExpected,
+		&m.HTTPAcceptedStatuses, &m.HTTPIgnoreTLS, &m.HTTPMethod, &m.HTTPKeyword, &m.HTTPKeywordInvert,
+		&m.HTTPUsername, &m.HTTPPassword, &m.HTTPBearerToken, &m.HTTPMaxRedirects,
+		&m.PushToken,
+		&m.HTTPHeaderName, &m.HTTPHeaderValue, &m.HTTPBodyType,
+		&m.HTTPJsonPath, &m.HTTPJsonExpected, &m.HTTPXPath, &m.HTTPXPathExpected,
+		&m.CreatedAt, &m.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return m, err
 }
 
 // ---------------------------------------------------------------------------

@@ -228,6 +228,14 @@ func notificationFromForm(c *gin.Context) (*models.Notification, string, error) 
 		cfg["from"] = c.PostForm("cfg_from")
 		cfg["to"] = c.PostForm("cfg_to")
 		cfg["tls"] = c.DefaultPostForm("cfg_tls", "true")
+	case "slack":
+		cfg["url"] = c.PostForm("cfg_slack_url")
+	case "discord":
+		cfg["url"] = c.PostForm("cfg_discord_url")
+	case "ntfy":
+		cfg["topic"] = c.PostForm("cfg_ntfy_topic")
+		cfg["server"] = c.PostForm("cfg_ntfy_server")
+		cfg["token"] = c.PostForm("cfg_ntfy_token")
 	}
 	cfgBytes, _ := json.Marshal(cfg)
 	cfgJSON := string(cfgBytes)

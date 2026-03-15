@@ -26,7 +26,7 @@
         </div>
         <div class="form-group">
             <label for="type">Monitor Type</label>
-            <select class="form-control" id="type" name="type" onchange="toggleDNSFields()">
+            <select class="form-control" id="type" name="type" onchange="toggleTypeFields()">
                 <option value="http"  {{ if eq .Monitor.Type "http"  }}selected{{ end }}>HTTP / HTTPS</option>
                 <option value="tcp"   {{ if eq .Monitor.Type "tcp"   }}selected{{ end }}>TCP Port</option>
                 <option value="ping"  {{ if eq .Monitor.Type "ping"  }}selected{{ end }}>Ping (Host)</option>
@@ -34,11 +34,11 @@
                 <option value="push"  {{ if eq .Monitor.Type "push"  }}selected{{ end }}>Push (Heartbeat)</option>
             </select>
         </div>
-        <div class="form-group">
+        <div id="url-group" class="form-group">
             <label for="url">URL / Host / Address</label>
             <input class="form-control" type="text" id="url" name="url"
                    value="{{ .Monitor.URL }}"
-                   placeholder="https://example.com  or  host:port  or  hostname" required />
+                   placeholder="https://example.com  or  host:port  or  hostname" />
         </div>
         <div class="form-group">
             <label for="dns_server">Custom DNS Server <span style="color:#64748b; font-weight:400;">(optional)</span></label>
@@ -73,6 +73,159 @@
                 </small>
             </div>
         </div>
+
+        <!-- HTTP extended options (shown only for http type) -->
+        <div id="http-fields" style="display:{{ if eq .Monitor.Type "http" }}block{{ else }}none{{ end }};">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="http_method">HTTP Method</label>
+                    <select class="form-control" id="http_method" name="http_method">
+                        {{ $m := .Monitor.HTTPMethod }}
+                        <option value="GET"     {{ if or (eq $m "GET")  (eq $m "") }}selected{{ end }}>GET</option>
+                        <option value="HEAD"    {{ if eq $m "HEAD"    }}selected{{ end }}>HEAD</option>
+                        <option value="POST"    {{ if eq $m "POST"    }}selected{{ end }}>POST</option>
+                        <option value="PUT"     {{ if eq $m "PUT"     }}selected{{ end }}>PUT</option>
+                        <option value="PATCH"   {{ if eq $m "PATCH"   }}selected{{ end }}>PATCH</option>
+                        <option value="OPTIONS" {{ if eq $m "OPTIONS" }}selected{{ end }}>OPTIONS</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="http_max_redirects">Max Redirects</label>
+                    <input class="form-control" type="number" id="http_max_redirects" name="http_max_redirects"
+                           value="{{ if .Monitor.HTTPMaxRedirects }}{{ .Monitor.HTTPMaxRedirects }}{{ else }}10{{ end }}"
+                           min="0" max="30"
+                           title="0 = don't follow redirects; default 10" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="http_accepted_statuses">Accepted HTTP Status Codes <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                <input class="form-control" type="text" id="http_accepted_statuses" name="http_accepted_statuses"
+                       value="{{ .Monitor.HTTPAcceptedStatuses }}"
+                       placeholder="e.g. 200,201,204 — leave blank for any 2xx/3xx" />
+            </div>
+            <div class="form-group">
+                <label for="http_keyword">Keyword in Response Body <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                <input class="form-control" type="text" id="http_keyword" name="http_keyword"
+                       value="{{ .Monitor.HTTPKeyword }}"
+                       placeholder="e.g. &quot;ok&quot; or &quot;healthy&quot;" />
+                <label style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="http_keyword_invert" value="on"
+                           {{ if .Monitor.HTTPKeywordInvert }}checked{{ end }} />
+                    Invert — flag DOWN when keyword IS found
+                </label>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="http_username">Basic Auth Username <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                    <input class="form-control" type="text" id="http_username" name="http_username"
+                           value="{{ .Monitor.HTTPUsername }}" autocomplete="off" />
+                </div>
+                <div class="form-group">
+                    <label for="http_password">Basic Auth Password</label>
+                    <input class="form-control" type="password" id="http_password" name="http_password"
+                           value="{{ .Monitor.HTTPPassword }}" autocomplete="new-password" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="http_bearer_token">Bearer Token <span style="color:#64748b; font-weight:400;">(optional — overrides basic auth)</span></label>
+                <input class="form-control" type="password" id="http_bearer_token" name="http_bearer_token"
+                       value="{{ .Monitor.HTTPBearerToken }}" autocomplete="new-password" />
+            </div>
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.875rem; color:#94a3b8;">
+                    <input type="checkbox" name="http_ignore_tls" value="on"
+                           {{ if .Monitor.HTTPIgnoreTLS }}checked{{ end }} />
+                    Ignore / skip TLS certificate errors
+                </label>
+            </div>
+
+            <!-- Response Assertions -->
+            <div style="margin:1.25rem 0 0.75rem; padding-top:1rem; border-top:1px solid #334155;">
+                <span style="font-size:0.75rem; color:#64748b; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Response Assertions</span>
+            </div>
+
+            <div class="form-group">
+                <label for="http_body_type">Response Body Type</label>
+                <select class="form-control" id="http_body_type" name="http_body_type">
+                    <option value=""       {{ if eq .Monitor.HTTPBodyType ""       }}selected{{ end }}>Any</option>
+                    <option value="json"   {{ if eq .Monitor.HTTPBodyType "json"   }}selected{{ end }}>JSON</option>
+                    <option value="xml"    {{ if eq .Monitor.HTTPBodyType "xml"    }}selected{{ end }}>XML / SOAP</option>
+                    <option value="text"   {{ if eq .Monitor.HTTPBodyType "text"   }}selected{{ end }}>Text (text/*)</option>
+                    <option value="binary" {{ if eq .Monitor.HTTPBodyType "binary" }}selected{{ end }}>Binary / File</option>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="http_header_name">Response Header</label>
+                    <input class="form-control" type="text" id="http_header_name" name="http_header_name"
+                           value="{{ .Monitor.HTTPHeaderName }}" placeholder="e.g. X-Health" />
+                </div>
+                <div class="form-group">
+                    <label for="http_header_value">Expected Value <span style="color:#64748b; font-weight:400;">(empty = just check existence)</span></label>
+                    <input class="form-control" type="text" id="http_header_value" name="http_header_value"
+                           value="{{ .Monitor.HTTPHeaderValue }}" placeholder="e.g. ok" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>JSONPath Query <span style="color:#64748b; font-weight:400;">(optional, for JSON responses)</span></label>
+                <div style="display:grid; grid-template-columns:2fr 1fr; gap:0.75rem;">
+                    <input class="form-control" type="text" name="http_json_path"
+                           value="{{ .Monitor.HTTPJsonPath }}" placeholder="e.g. $.status" />
+                    <input class="form-control" type="text" name="http_json_expected"
+                           value="{{ .Monitor.HTTPJsonExpected }}" placeholder='e.g. ok, >5, !=error, ~activ' />
+                </div>
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Prefix expected value with <code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code> <code>!=</code> <code>~</code>(contains) for comparisons. Leave blank to only check the path exists.
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>XPath Query <span style="color:#64748b; font-weight:400;">(optional, for XML / SOAP responses)</span></label>
+                <div style="display:grid; grid-template-columns:2fr 1fr; gap:0.75rem;">
+                    <input class="form-control" type="text" name="http_xpath"
+                           value="{{ .Monitor.HTTPXPath }}" placeholder="e.g. //status or //soap:Body//ns:result" />
+                    <input class="form-control" type="text" name="http_xpath_expected"
+                           value="{{ .Monitor.HTTPXPathExpected }}" placeholder='e.g. ok, >0, ~success' />
+                </div>
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Same comparison prefix operators as JSONPath. Leave blank to only check the node exists.
+                </small>
+            </div>
+        </div>
+
+        <!-- Push / Heartbeat info (shown only for push type) -->
+        <div id="push-fields" style="display:{{ if eq .Monitor.Type "push" }}block{{ else }}none{{ end }};">
+            <input type="hidden" name="push_token" value="{{ .Monitor.PushToken }}" />
+            {{ if .Monitor.PushToken }}
+            <div class="form-group">
+                <label>Push URL</label>
+                <input class="form-control" type="text" id="push-url-display"
+                       value="{{ .Monitor.PushToken }}" readonly onclick="this.select()"
+                       style="font-family:monospace; font-size:0.875rem;" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Full URL: <span id="push-url-full" style="color:#94a3b8; font-family:monospace;"></span>
+                </small>
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.1rem;">
+                    Call this URL (HTTP GET) from your app or cron job to signal UP. A monitor timeout means DOWN.
+                </small>
+                <script>
+                    (function(){
+                        var token = {{ .Monitor.PushToken | printf "%q" }};
+                        var full = window.location.origin + '/push/' + token;
+                        document.getElementById('push-url-display').value = full;
+                        document.getElementById('push-url-full').textContent = full;
+                    })();
+                </script>
+            </div>
+            {{ else }}
+            <div style="border:1px dashed #334155; border-radius:0.5rem; padding:1rem; text-align:center; color:#64748b; font-size:0.875rem;">
+                Save this monitor to generate its Push URL.
+            </div>
+            {{ end }}
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
             <div class="form-group">
                 <label for="interval_seconds">Check Interval (s)</label>
@@ -109,11 +262,17 @@
                         <span style="font-size:0.875rem; color:#e2e8f0; font-weight:500;">{{ .Name }}</span>
                         <span style="display:inline-block; padding:0.1rem 0.45rem; border-radius:9999px; font-size:0.7rem; font-weight:600;
                             {{ if eq .Type "webhook" }}background:#1e3a5f; color:#60a5fa;
+                            {{ else if eq .Type "slack" }}background:#1a2e3a; color:#38bdf8;
+                            {{ else if eq .Type "discord" }}background:#1e1a3a; color:#a78bfa;
+                            {{ else if eq .Type "ntfy" }}background:#1a3a2a; color:#4ade80;
                             {{ else if eq .Type "telegram" }}background:#1a3a2a; color:#34d399;
                             {{ else if eq .Type "email" }}background:#3b1a1a; color:#fca5a5;
                             {{ else }}background:#1e2a40; color:#94a3b8;
                             {{ end }}">
                             {{ if eq .Type "webhook" }}Webhook
+                            {{ else if eq .Type "slack" }}Slack
+                            {{ else if eq .Type "discord" }}Discord
+                            {{ else if eq .Type "ntfy" }}ntfy
                             {{ else if eq .Type "telegram" }}Telegram
                             {{ else if eq .Type "email" }}Email
                             {{ else }}{{ .Type }}{{ end }}
@@ -150,9 +309,13 @@
     </div>
 </body>
 <script>
-function toggleDNSFields() {
+function toggleTypeFields() {
     var t = document.getElementById('type').value;
-    document.getElementById('dns-fields').style.display = t === 'dns' ? 'block' : 'none';
+    document.getElementById('dns-fields').style.display  = (t === 'dns')  ? 'block' : 'none';
+    document.getElementById('http-fields').style.display = (t === 'http') ? 'block' : 'none';
+    document.getElementById('push-fields').style.display = (t === 'push') ? 'block' : 'none';
+    // Show/hide the URL input group — not needed for push monitors.
+    document.getElementById('url-group').style.display = (t === 'push') ? 'none' : 'block';
     var urlInput = document.getElementById('url');
     if (t === 'dns') {
         urlInput.placeholder = 'Domain to query, e.g. example.com';

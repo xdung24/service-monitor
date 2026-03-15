@@ -61,6 +61,9 @@ func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.
 	r.POST("/login", h.LoginSubmit)
 	r.GET("/logout", h.Logout)
 
+	// Push endpoint (unauthenticated — external services call this to signal UP).
+	r.GET("/push/:token", h.MonitorPush)
+
 	// Dashboard (protected)
 	auth := r.Group("/")
 	auth.Use(h.AuthRequired())

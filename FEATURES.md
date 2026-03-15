@@ -13,10 +13,10 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | TCP Port | ✅ Done | Dial connect check |
 | Ping | ✅ Done | TCP-proxy reachability (port 80/443) |
 | DNS | ✅ Done | A/AAAA/CNAME/MX/NS/TXT/PTR; optional expected-value assertion |
-| Push / Heartbeat | ⬜ Planned | `GET /push/:token` endpoint; token stored on monitor |
-| HTTP — Keyword match | ⬜ Planned | Scan response body for substring |
+| Push / Heartbeat | ✅ Done | `GET /push/:token` endpoint; token stored on monitor; scheduler skips push monitors |
+| HTTP — Keyword match | ✅ Done | Scan response body for substring; optional invert flag |
 | HTTP — JSON Query | ⬜ Planned | JSONPath expression + operator on response |
-| HTTP — Accepted status codes | ⬜ Planned | Comma-separated list, e.g. `200,404` |
+| HTTP — Accepted status codes | ✅ Done | Comma-separated list, e.g. `200,404`; empty = 2xx/3xx |
 | WebSocket Upgrade | ⬜ Planned | Verify WS handshake succeeds |
 | SMTP | ⬜ Planned | Connect + optional EHLO |
 | SNMP | ⬜ Planned | Get OID value, optional assert |
@@ -47,16 +47,16 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | Feature | Status | Notes |
 |---|---|---|
 | Status code check | ✅ Done | |
-| Custom accepted status codes | ⬜ Planned | e.g. treat 404 as UP |
-| Ignore TLS/SSL errors | ⬜ Planned | `InsecureSkipVerify` flag |
+| Custom accepted status codes | ✅ Done | e.g. treat 404 as UP |
+| Ignore TLS/SSL errors | ✅ Done | `InsecureSkipVerify` flag (user opt-in) |
 | TLS certificate expiry alert | ⬜ Planned | Alert N days before expiry |
-| Basic auth | ⬜ Planned | Username + password on monitor |
-| Bearer token auth | ⬜ Planned | `Authorization: Bearer …` header |
+| Basic auth | ✅ Done | Username + password on monitor |
+| Bearer token auth | ✅ Done | `Authorization: Bearer …` header (takes priority over basic auth) |
 | Custom request headers | ⬜ Planned | Key-value list |
-| Custom request body | ⬜ Planned | POST/PUT body + method select |
-| Keyword match in body | ⬜ Planned | (see Monitor Types above) |
+| Custom request body | ✅ Done | HTTP method select (GET/HEAD/POST/PUT/PATCH/OPTIONS) |
+| Keyword match in body | ✅ Done | (see Monitor Types above) |
 | JSON path query | ⬜ Planned | (see Monitor Types above) |
-| Redirect follow control | ⬜ Planned | Max redirects / no-follow option |
+| Redirect follow control | ✅ Done | Max redirects (0 = no-follow) |
 | Proxy per-monitor | ⬜ Planned | HTTP/SOCKS5 proxy per check |
 
 ---
@@ -79,7 +79,7 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | Docker host management | ⬜ Planned | Registered Docker daemons for Docker monitor |
 | API keys | ⬜ Planned | Token-based API access |
 | 2FA (TOTP) | ⬜ Planned | TOTP QR code + enforced on login |
-| Additional notification providers | ⬜ Planned | Slack, Discord, PagerDuty, Gotify, ntfy, etc. |
+| Additional notification providers | ✅ Done (Slack, Discord, ntfy); ⬜ Planned (PagerDuty, Gotify, others) |
 | Remote browser config | ⬜ Planned | Chromium endpoint for real-browser checks |
 | Cloudflare Tunnel integration | ⬜ Planned | Expose via cloudflared without open port |
 | Dark/light theme toggle | ⬜ Planned | User preference stored in cookie |

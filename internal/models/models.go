@@ -26,8 +26,32 @@ type Monitor struct {
 	DNSServer       string      `db:"dns_server"`      // optional custom DNS resolver (host[:port])
 	DNSRecordType   string      `db:"dns_record_type"` // A, AAAA, CNAME, MX, NS, TXT, PTR (DNS type only)
 	DNSExpected     string      `db:"dns_expected"`    // optional expected value to match in answer
-	CreatedAt       time.Time   `db:"created_at"`
-	UpdatedAt       time.Time   `db:"updated_at"`
+
+	// HTTP extended options
+	HTTPAcceptedStatuses string `db:"http_accepted_statuses"` // comma-separated accepted status codes; empty = 2xx/3xx
+	HTTPIgnoreTLS        bool   `db:"http_ignore_tls"`        // skip TLS certificate verification
+	HTTPMethod           string `db:"http_method"`            // HTTP method (GET, POST, HEAD, …); default GET
+	HTTPKeyword          string `db:"http_keyword"`           // response body must contain this string (if non-empty)
+	HTTPKeywordInvert    bool   `db:"http_keyword_invert"`    // invert: body must NOT contain keyword
+	HTTPUsername         string `db:"http_username"`          // HTTP basic-auth username
+	HTTPPassword         string `db:"http_password"`          // HTTP basic-auth password
+	HTTPBearerToken      string `db:"http_bearer_token"`      // bearer token (takes priority over basic auth)
+	HTTPMaxRedirects     int    `db:"http_max_redirects"`     // 0 = no follow; positive = limit; default 10
+
+	// Push/Heartbeat monitor
+	PushToken string `db:"push_token"` // random token for push endpoint (/push/:token)
+
+	// Response assertion fields (HTTP only)
+	HTTPHeaderName    string `db:"http_header_name"`    // response header to check; empty = skip
+	HTTPHeaderValue   string `db:"http_header_value"`   // expected value; empty = presence-only check
+	HTTPBodyType      string `db:"http_body_type"`      // "": any, "json", "xml", "text", "binary"
+	HTTPJsonPath      string `db:"http_json_path"`      // JSONPath expression e.g. $.status
+	HTTPJsonExpected  string `db:"http_json_expected"`  // expected value; empty = just check path exists
+	HTTPXPath         string `db:"http_xpath"`          // XPath expression e.g. //status
+	HTTPXPathExpected string `db:"http_xpath_expected"` // expected value; empty = just check node exists
+
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 
 	// Computed fields (not stored in DB)
 	LastStatus  *int    `db:"-"`

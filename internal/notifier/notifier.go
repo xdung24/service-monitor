@@ -37,6 +37,9 @@ var Registry = map[string]Provider{
 	"webhook":  &WebhookProvider{},
 	"telegram": &TelegramProvider{},
 	"email":    &EmailProvider{},
+	"slack":    &SlackProvider{},
+	"discord":  &DiscordProvider{},
+	"ntfy":     &NtfyProvider{},
 }
 
 // SendResult holds the outcome of a single provider send attempt.

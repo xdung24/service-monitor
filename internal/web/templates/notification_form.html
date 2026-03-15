@@ -34,7 +34,10 @@
             <label for="type">Provider Type</label>
             <select class="form-control" id="type" name="type" onchange="showFields(this.value)">
                 <option value="">— select type —</option>
-                <option value="webhook"  {{ if eq .Notification.Type "webhook"  }}selected{{ end }}>��� Webhook (Slack, Discord, custom)</option>
+                <option value="webhook"  {{ if eq .Notification.Type "webhook"  }}selected{{ end }}>🔗 Webhook (custom HTTP)</option>
+                <option value="slack"    {{ if eq .Notification.Type "slack"    }}selected{{ end }}>💬 Slack Incoming Webhook</option>
+                <option value="discord"  {{ if eq .Notification.Type "discord"  }}selected{{ end }}>🎮 Discord Webhook</option>
+                <option value="ntfy"     {{ if eq .Notification.Type "ntfy"     }}selected{{ end }}>🔔 ntfy</option>
                 <option value="telegram" {{ if eq .Notification.Type "telegram" }}selected{{ end }}>✈️ Telegram</option>
                 <option value="email"    {{ if eq .Notification.Type "email"    }}selected{{ end }}>✉️ Email / SMTP</option>
             </select>
@@ -46,12 +49,59 @@
                 <label for="cfg_url">Webhook URL</label>
                 <input class="form-control" type="url" id="cfg_url" name="cfg_url"
                        value="{{ index .Config "url" }}"
-                       placeholder="https://hooks.slack.com/services/..." />
+                       placeholder="https://hooks.example.com/..." />
             </div>
             <div class="form-group">
                 <label for="cfg_secret">Secret (optional — sent as X-Webhook-Secret header)</label>
                 <input class="form-control" type="text" id="cfg_secret" name="cfg_secret"
                        value="{{ index .Config "secret" }}" />
+            </div>
+        </div>
+
+        <!-- Slack Incoming Webhook fields -->
+        <div id="fields-slack" class="provider-fields">
+            <div class="form-group">
+                <label for="cfg_slack_url">Slack Incoming Webhook URL</label>
+                <input class="form-control" type="url" id="cfg_slack_url" name="cfg_slack_url"
+                       value="{{ index .Config "url" }}"
+                       placeholder="https://hooks.slack.com/services/T.../B.../..." />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Create at <strong>api.slack.com/apps</strong> → Incoming Webhooks.
+                </small>
+            </div>
+        </div>
+
+        <!-- Discord Webhook fields -->
+        <div id="fields-discord" class="provider-fields">
+            <div class="form-group">
+                <label for="cfg_discord_url">Discord Webhook URL</label>
+                <input class="form-control" type="url" id="cfg_discord_url" name="cfg_discord_url"
+                       value="{{ index .Config "url" }}"
+                       placeholder="https://discord.com/api/webhooks/..." />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Create via Server Settings → Integrations → Webhooks.
+                </small>
+            </div>
+        </div>
+
+        <!-- ntfy fields -->
+        <div id="fields-ntfy" class="provider-fields">
+            <div class="form-group">
+                <label for="cfg_ntfy_topic">Topic</label>
+                <input class="form-control" type="text" id="cfg_ntfy_topic" name="cfg_ntfy_topic"
+                       value="{{ index .Config "topic" }}"
+                       placeholder="my-alerts" />
+            </div>
+            <div class="form-group">
+                <label for="cfg_ntfy_server">Server URL <span style="color:#64748b; font-weight:400;">(optional, default ntfy.sh)</span></label>
+                <input class="form-control" type="url" id="cfg_ntfy_server" name="cfg_ntfy_server"
+                       value="{{ index .Config "server" }}"
+                       placeholder="https://ntfy.sh" />
+            </div>
+            <div class="form-group">
+                <label for="cfg_ntfy_token">Access Token <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                <input class="form-control" type="password" id="cfg_ntfy_token" name="cfg_ntfy_token"
+                       value="{{ index .Config "token" }}" autocomplete="new-password" />
             </div>
         </div>
 

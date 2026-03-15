@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -88,43 +90,120 @@ func dialerFor(m *models.Monitor) net.Dialer {
 // HTTPChecker checks an HTTP/HTTPS endpoint.
 type HTTPChecker struct{}
 
-// Check performs an HTTP GET and records status + latency.
+// Check performs an HTTP/HTTPS request and records status + latency.
+// Supports custom method, TLS skip, auth, accepted status codes, and keyword matching.
 func (c *HTTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 	d := dialerFor(m)
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: m.HTTPIgnoreTLS}, // #nosec G402 -- user opt-in
 		DialContext:     d.DialContext,
+	}
+
+	maxRedirects := m.HTTPMaxRedirects
+	if maxRedirects < 0 {
+		maxRedirects = 10
 	}
 	client := &http.Client{
 		Timeout:   time.Duration(m.TimeoutSeconds) * time.Second,
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("too many redirects")
+			if maxRedirects == 0 {
+				return http.ErrUseLastResponse
+			}
+			if len(via) >= maxRedirects {
+				return fmt.Errorf("too many redirects (max %d)", maxRedirects)
 			}
 			return nil
 		},
 	}
 
+	method := m.HTTPMethod
+	if method == "" {
+		method = http.MethodGet
+	}
+
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, method, m.URL, nil)
 	if err != nil {
 		return Result{Status: 0, Message: fmt.Sprintf("invalid request: %v", err)}
 	}
 	req.Header.Set("User-Agent", "service-monitor/1.0")
 
+	// Bearer token takes priority over HTTP basic auth.
+	if m.HTTPBearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+m.HTTPBearerToken)
+	} else if m.HTTPUsername != "" || m.HTTPPassword != "" {
+		req.SetBasicAuth(m.HTTPUsername, m.HTTPPassword)
+	}
+
 	resp, err := client.Do(req)
 	latency := int(time.Since(start).Milliseconds())
-
 	if err != nil {
 		return Result{Status: 0, LatencyMs: latency, Message: err.Error()}
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		return Result{Status: 1, LatencyMs: latency, Message: fmt.Sprintf("%d %s", resp.StatusCode, resp.Status)}
+	statusMsg := fmt.Sprintf("%d %s", resp.StatusCode, resp.Status)
+	if !isStatusAccepted(resp.StatusCode, m.HTTPAcceptedStatuses) {
+		return Result{Status: 0, LatencyMs: latency, Message: statusMsg}
 	}
-	return Result{Status: 0, LatencyMs: latency, Message: fmt.Sprintf("%d %s", resp.StatusCode, resp.Status)}
+
+	// Header assertion (reads resp.Header only — no body needed).
+	if msg := checkHeaderConstraint(resp, m); msg != "" {
+		return Result{Status: 0, LatencyMs: latency, Message: msg}
+	}
+
+	// Body-type assertion (validates Content-Type header — no body read needed).
+	if msg := checkBodyType(resp, m.HTTPBodyType); msg != "" {
+		return Result{Status: 0, LatencyMs: latency, Message: msg}
+	}
+
+	// Read response body once when any body-based check is configured.
+	var body []byte
+	if m.HTTPKeyword != "" || m.HTTPJsonPath != "" || m.HTTPXPath != "" {
+		body, err = io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB cap
+		if err != nil {
+			return Result{Status: 0, LatencyMs: latency, Message: fmt.Sprintf("read body: %v", err)}
+		}
+	}
+
+	// Keyword check.
+	if m.HTTPKeyword != "" {
+		found := strings.Contains(string(body), m.HTTPKeyword)
+		if m.HTTPKeywordInvert {
+			found = !found
+		}
+		if !found {
+			return Result{Status: 0, LatencyMs: latency, Message: fmt.Sprintf("keyword %q not found in response", m.HTTPKeyword)}
+		}
+	}
+
+	// JSONPath assertion.
+	if msg := checkJsonPath(body, m.HTTPJsonPath, m.HTTPJsonExpected); msg != "" {
+		return Result{Status: 0, LatencyMs: latency, Message: msg}
+	}
+
+	// XPath assertion.
+	if msg := checkXPath(body, m.HTTPXPath, m.HTTPXPathExpected); msg != "" {
+		return Result{Status: 0, LatencyMs: latency, Message: msg}
+	}
+
+	return Result{Status: 1, LatencyMs: latency, Message: statusMsg}
+}
+
+// isStatusAccepted reports whether code is in the accepted set.
+// If accepted is empty, any 2xx or 3xx status is accepted.
+// Otherwise accepted is a comma-separated list of exact integer status codes.
+func isStatusAccepted(code int, accepted string) bool {
+	if accepted == "" {
+		return code >= 200 && code < 400
+	}
+	for _, part := range strings.Split(accepted, ",") {
+		if n, err := strconv.Atoi(strings.TrimSpace(part)); err == nil && n == code {
+			return true
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------

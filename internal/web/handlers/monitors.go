@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -146,28 +148,59 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 	}
 
 	type exportDoc struct {
-		Schema          string             `json:"schema"`
-		Name            string             `json:"name"`
-		Type            models.MonitorType `json:"type"`
-		URL             string             `json:"url"`
-		IntervalSeconds int                `json:"interval_seconds"`
-		TimeoutSeconds  int                `json:"timeout_seconds"`
-		Retries         int                `json:"retries"`
-		DNSServer       string             `json:"dns_server,omitempty"`
-		DNSRecordType   string             `json:"dns_record_type,omitempty"`
-		DNSExpected     string             `json:"dns_expected,omitempty"`
+		Schema               string             `json:"schema"`
+		Name                 string             `json:"name"`
+		Type                 models.MonitorType `json:"type"`
+		URL                  string             `json:"url"`
+		IntervalSeconds      int                `json:"interval_seconds"`
+		TimeoutSeconds       int                `json:"timeout_seconds"`
+		Retries              int                `json:"retries"`
+		DNSServer            string             `json:"dns_server,omitempty"`
+		DNSRecordType        string             `json:"dns_record_type,omitempty"`
+		DNSExpected          string             `json:"dns_expected,omitempty"`
+		HTTPAcceptedStatuses string             `json:"http_accepted_statuses,omitempty"`
+		HTTPIgnoreTLS        bool               `json:"http_ignore_tls,omitempty"`
+		HTTPMethod           string             `json:"http_method,omitempty"`
+		HTTPKeyword          string             `json:"http_keyword,omitempty"`
+		HTTPKeywordInvert    bool               `json:"http_keyword_invert,omitempty"`
+		HTTPUsername         string             `json:"http_username,omitempty"`
+		HTTPBearerToken      string             `json:"http_bearer_token,omitempty"`
+		HTTPMaxRedirects     int                `json:"http_max_redirects,omitempty"`
+		HTTPHeaderName       string             `json:"http_header_name,omitempty"`
+		HTTPHeaderValue      string             `json:"http_header_value,omitempty"`
+		HTTPBodyType         string             `json:"http_body_type,omitempty"`
+		HTTPJsonPath         string             `json:"http_json_path,omitempty"`
+		HTTPJsonExpected     string             `json:"http_json_expected,omitempty"`
+		HTTPXPath            string             `json:"http_xpath,omitempty"`
+		HTTPXPathExpected    string             `json:"http_xpath_expected,omitempty"`
 	}
 	doc := exportDoc{
-		Schema:          "service-monitor/monitor/v1",
-		Name:            m.Name,
-		Type:            m.Type,
-		URL:             m.URL,
-		IntervalSeconds: m.IntervalSeconds,
-		TimeoutSeconds:  m.TimeoutSeconds,
-		Retries:         m.Retries,
-		DNSServer:       m.DNSServer,
-		DNSRecordType:   m.DNSRecordType,
-		DNSExpected:     m.DNSExpected,
+		Schema:               "service-monitor/monitor/v1",
+		Name:                 m.Name,
+		Type:                 m.Type,
+		URL:                  m.URL,
+		IntervalSeconds:      m.IntervalSeconds,
+		TimeoutSeconds:       m.TimeoutSeconds,
+		Retries:              m.Retries,
+		DNSServer:            m.DNSServer,
+		DNSRecordType:        m.DNSRecordType,
+		DNSExpected:          m.DNSExpected,
+		HTTPAcceptedStatuses: m.HTTPAcceptedStatuses,
+		HTTPIgnoreTLS:        m.HTTPIgnoreTLS,
+		HTTPMethod:           m.HTTPMethod,
+		HTTPKeyword:          m.HTTPKeyword,
+		HTTPKeywordInvert:    m.HTTPKeywordInvert,
+		HTTPUsername:         m.HTTPUsername,
+		HTTPBearerToken:      m.HTTPBearerToken,
+		HTTPMaxRedirects:     m.HTTPMaxRedirects,
+		HTTPHeaderName:       m.HTTPHeaderName,
+		HTTPHeaderValue:      m.HTTPHeaderValue,
+		HTTPBodyType:         m.HTTPBodyType,
+		HTTPJsonPath:         m.HTTPJsonPath,
+		HTTPJsonExpected:     m.HTTPJsonExpected,
+		HTTPXPath:            m.HTTPXPath,
+		HTTPXPathExpected:    m.HTTPXPathExpected,
+		// HTTPPassword and PushToken are intentionally excluded from exports.
 	}
 
 	data, err := json.MarshalIndent(doc, "", "  ")
@@ -198,16 +231,31 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 	}
 
 	type importDoc struct {
-		Schema          string             `json:"schema"`
-		Name            string             `json:"name"`
-		Type            models.MonitorType `json:"type"`
-		URL             string             `json:"url"`
-		IntervalSeconds int                `json:"interval_seconds"`
-		TimeoutSeconds  int                `json:"timeout_seconds"`
-		Retries         int                `json:"retries"`
-		DNSServer       string             `json:"dns_server"`
-		DNSRecordType   string             `json:"dns_record_type"`
-		DNSExpected     string             `json:"dns_expected"`
+		Schema               string             `json:"schema"`
+		Name                 string             `json:"name"`
+		Type                 models.MonitorType `json:"type"`
+		URL                  string             `json:"url"`
+		IntervalSeconds      int                `json:"interval_seconds"`
+		TimeoutSeconds       int                `json:"timeout_seconds"`
+		Retries              int                `json:"retries"`
+		DNSServer            string             `json:"dns_server"`
+		DNSRecordType        string             `json:"dns_record_type"`
+		DNSExpected          string             `json:"dns_expected"`
+		HTTPAcceptedStatuses string             `json:"http_accepted_statuses"`
+		HTTPIgnoreTLS        bool               `json:"http_ignore_tls"`
+		HTTPMethod           string             `json:"http_method"`
+		HTTPKeyword          string             `json:"http_keyword"`
+		HTTPKeywordInvert    bool               `json:"http_keyword_invert"`
+		HTTPUsername         string             `json:"http_username"`
+		HTTPBearerToken      string             `json:"http_bearer_token"`
+		HTTPMaxRedirects     int                `json:"http_max_redirects"`
+		HTTPHeaderName       string             `json:"http_header_name"`
+		HTTPHeaderValue      string             `json:"http_header_value"`
+		HTTPBodyType         string             `json:"http_body_type"`
+		HTTPJsonPath         string             `json:"http_json_path"`
+		HTTPJsonExpected     string             `json:"http_json_expected"`
+		HTTPXPath            string             `json:"http_xpath"`
+		HTTPXPathExpected    string             `json:"http_xpath_expected"`
 	}
 
 	var doc importDoc
@@ -230,16 +278,31 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 	}
 
 	m := &models.Monitor{
-		Name:            doc.Name + " (imported)",
-		Type:            doc.Type,
-		URL:             doc.URL,
-		IntervalSeconds: doc.IntervalSeconds,
-		TimeoutSeconds:  doc.TimeoutSeconds,
-		Retries:         doc.Retries,
-		Active:          false, // start paused so the user can review first
-		DNSServer:       doc.DNSServer,
-		DNSRecordType:   doc.DNSRecordType,
-		DNSExpected:     doc.DNSExpected,
+		Name:                 doc.Name + " (imported)",
+		Type:                 doc.Type,
+		URL:                  doc.URL,
+		IntervalSeconds:      doc.IntervalSeconds,
+		TimeoutSeconds:       doc.TimeoutSeconds,
+		Retries:              doc.Retries,
+		Active:               false, // start paused so the user can review first
+		DNSServer:            doc.DNSServer,
+		DNSRecordType:        doc.DNSRecordType,
+		DNSExpected:          doc.DNSExpected,
+		HTTPAcceptedStatuses: doc.HTTPAcceptedStatuses,
+		HTTPIgnoreTLS:        doc.HTTPIgnoreTLS,
+		HTTPMethod:           doc.HTTPMethod,
+		HTTPKeyword:          doc.HTTPKeyword,
+		HTTPKeywordInvert:    doc.HTTPKeywordInvert,
+		HTTPUsername:         doc.HTTPUsername,
+		HTTPBearerToken:      doc.HTTPBearerToken,
+		HTTPMaxRedirects:     doc.HTTPMaxRedirects,
+		HTTPHeaderName:       doc.HTTPHeaderName,
+		HTTPHeaderValue:      doc.HTTPHeaderValue,
+		HTTPBodyType:         doc.HTTPBodyType,
+		HTTPJsonPath:         doc.HTTPJsonPath,
+		HTTPJsonExpected:     doc.HTTPJsonExpected,
+		HTTPXPath:            doc.HTTPXPath,
+		HTTPXPathExpected:    doc.HTTPXPathExpected,
 	}
 
 	id, err := h.monitors.Create(m)
@@ -248,6 +311,27 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, fmt.Sprintf("/monitors/%d/edit", id))
+}
+
+// MonitorPush handles an incoming heartbeat ping for a push-type monitor.
+// This endpoint is intentionally unauthenticated — the random push token acts as the credential.
+func (h *Handler) MonitorPush(c *gin.Context) {
+	token := c.Param("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "token required"})
+		return
+	}
+	m, err := h.monitors.GetByPushToken(token)
+	if err != nil || m == nil {
+		c.JSON(http.StatusNotFound, gin.H{"ok": false, "error": "monitor not found"})
+		return
+	}
+	if !m.Active {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "monitor is paused"})
+		return
+	}
+	h.sched.RecordHeartbeat(m, 1, 0, "push received")
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // MonitorDelete removes a monitor.
@@ -325,23 +409,66 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	dnsRecordType := c.DefaultPostForm("dns_record_type", "A")
 	dnsExpected := c.PostForm("dns_expected")
 
+	// HTTP extended fields
+	httpAcceptedStatuses := c.PostForm("http_accepted_statuses")
+	httpIgnoreTLS := c.PostForm("http_ignore_tls") == "on"
+	httpMethod := c.DefaultPostForm("http_method", "GET")
+	httpKeyword := c.PostForm("http_keyword")
+	httpKeywordInvert := c.PostForm("http_keyword_invert") == "on"
+	httpUsername := c.PostForm("http_username")
+	httpPassword := c.PostForm("http_password")
+	httpBearerToken := c.PostForm("http_bearer_token")
+	httpMaxRedirects, err3 := strconv.Atoi(c.DefaultPostForm("http_max_redirects", "10"))
+	if err3 != nil || httpMaxRedirects < 0 {
+		httpMaxRedirects = 10
+	}
+
+	// Push token is carried via a hidden form input so edits don't regenerate it.
+	pushToken := c.PostForm("push_token")
+
+	// Response assertion fields
+	httpHeaderName := c.PostForm("http_header_name")
+	httpHeaderValue := c.PostForm("http_header_value")
+	httpBodyType := c.PostForm("http_body_type")
+	httpJsonPath := c.PostForm("http_json_path")
+	httpJsonExpected := c.PostForm("http_json_expected")
+	httpXPath := c.PostForm("http_xpath")
+	httpXPathExpected := c.PostForm("http_xpath_expected")
+
 	// Always build a partial monitor so error paths never get nil.
 	m := &models.Monitor{
-		Name:            name,
-		Type:            monType,
-		URL:             monURL,
-		IntervalSeconds: intervalSec,
-		TimeoutSeconds:  timeoutSec,
-		Active:          true,
-		Retries:         retries,
-		DNSServer:       dnsServer,
-		DNSRecordType:   dnsRecordType,
-		DNSExpected:     dnsExpected,
+		Name:                 name,
+		Type:                 monType,
+		URL:                  monURL,
+		IntervalSeconds:      intervalSec,
+		TimeoutSeconds:       timeoutSec,
+		Active:               true,
+		Retries:              retries,
+		DNSServer:            dnsServer,
+		DNSRecordType:        dnsRecordType,
+		DNSExpected:          dnsExpected,
+		HTTPAcceptedStatuses: httpAcceptedStatuses,
+		HTTPIgnoreTLS:        httpIgnoreTLS,
+		HTTPMethod:           httpMethod,
+		HTTPKeyword:          httpKeyword,
+		HTTPKeywordInvert:    httpKeywordInvert,
+		HTTPUsername:         httpUsername,
+		HTTPPassword:         httpPassword,
+		HTTPBearerToken:      httpBearerToken,
+		HTTPMaxRedirects:     httpMaxRedirects,
+		PushToken:            pushToken,
+		HTTPHeaderName:       httpHeaderName,
+		HTTPHeaderValue:      httpHeaderValue,
+		HTTPBodyType:         httpBodyType,
+		HTTPJsonPath:         httpJsonPath,
+		HTTPJsonExpected:     httpJsonExpected,
+		HTTPXPath:            httpXPath,
+		HTTPXPathExpected:    httpXPathExpected,
 	}
 	if name == "" {
 		return m, &formError{"name is required"}
 	}
-	if monURL == "" {
+	if monURL == "" && monType != models.MonitorTypePush {
 		return m, &formError{"url is required"}
 	}
 	return m, nil
@@ -350,6 +477,16 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 type formError struct{ msg string }
 
 func (e *formError) Error() string { return e.msg }
+
+// generatePushToken returns a random 16-byte hex string for push monitor authentication.
+func generatePushToken() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand should never fail on a healthy OS; fall back to timestamp.
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
 
 // notifIDsFromForm parses the repeated "notifications" form values into a slice of int64 IDs.
 func notifIDsFromForm(c *gin.Context) []int64 {
@@ -387,6 +524,20 @@ func notifSummaryMap(notifs []*models.Notification) map[int64]string {
 		case "email":
 			if to := cfg["to"]; to != "" {
 				summaries[n.ID] = "→ " + to
+			}
+		case "slack":
+			if u := cfg["url"]; u != "" {
+				if parsed, err := neturl.Parse(u); err == nil && parsed.Host != "" {
+					summaries[n.ID] = parsed.Host
+				} else {
+					summaries[n.ID] = u
+				}
+			}
+		case "discord":
+			summaries[n.ID] = "Discord Webhook"
+		case "ntfy":
+			if topic := cfg["topic"]; topic != "" {
+				summaries[n.ID] = "topic: " + topic
 			}
 		}
 	}

@@ -81,6 +81,12 @@ func (s *Scheduler) Schedule(m *models.Monitor) {
 		return
 	}
 
+	// Push monitors receive heartbeats via the /push/:token endpoint; they are
+	// not polled by the scheduler.
+	if m.Type == models.MonitorTypePush {
+		return
+	}
+
 	interval := time.Duration(m.IntervalSeconds) * time.Second
 	j := &job{
 		monitorID: m.ID,
@@ -231,5 +237,30 @@ func (s *Scheduler) maybeNotify(m *models.Monitor, result monitor.Result) {
 
 	if err := s.monitors.UpdateLastNotifiedStatus(m.ID, result.Status); err != nil {
 		log.Printf("scheduler: update last_notified_status for monitor %d: %v", m.ID, err)
+	}
+}
+
+// RecordHeartbeat persists a push/heartbeat result for the given monitor and
+// fires state-change notifications. Called by the unauthenticated /push/:token
+// endpoint instead of the scheduler poller.
+func (s *Scheduler) RecordHeartbeat(m *models.Monitor, status, latencyMs int, message string) {
+	h := &models.Heartbeat{
+		MonitorID: m.ID,
+		Status:    status,
+		LatencyMs: latencyMs,
+		Message:   message,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := s.heartbeat.Insert(h); err != nil {
+		log.Printf("scheduler: push heartbeat insert for monitor %d: %v", m.ID, err)
+	}
+	statusText := "UP"
+	if status == 0 {
+		statusText = "DOWN"
+	}
+	log.Printf("push[%d] %s — %s (%dms) %s", m.ID, m.Name, statusText, latencyMs, message)
+	s.maybeNotify(m, monitor.Result{Status: status, LatencyMs: latencyMs, Message: message})
+	if err := s.monitors.UpdateLastStatus(m.ID, status); err != nil {
+		log.Printf("scheduler: push update last_status for monitor %d: %v", m.ID, err)
 	}
 }
