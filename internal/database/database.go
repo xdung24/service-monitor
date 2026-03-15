@@ -13,8 +13,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
+//go:embed migrations_users/*.sql
+var usersMigrationsFS embed.FS
+
+//go:embed migrations_user/*.sql
+var userMigrationsFS embed.FS
 
 // Open opens (or creates) the SQLite database at the given path.
 func Open(dsn string) (*sql.DB, error) {
@@ -31,9 +34,18 @@ func Open(dsn string) (*sql.DB, error) {
 	return db, db.Ping()
 }
 
-// Migrate runs all pending SQL migrations embedded in the binary.
-func Migrate(db *sql.DB) error {
-	sourceDriver, err := iofs.New(migrationsFS, "migrations")
+// MigrateUsersDB runs all pending migrations on the shared users database.
+func MigrateUsersDB(db *sql.DB) error {
+	return runMigrations(db, usersMigrationsFS, "migrations_users")
+}
+
+// MigrateUserDB runs all pending migrations on a per-user data database.
+func MigrateUserDB(db *sql.DB) error {
+	return runMigrations(db, userMigrationsFS, "migrations_user")
+}
+
+func runMigrations(db *sql.DB, fs embed.FS, dir string) error {
+	sourceDriver, err := iofs.New(fs, dir)
 	if err != nil {
 		return fmt.Errorf("migrations source: %w", err)
 	}

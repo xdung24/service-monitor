@@ -1,0 +1,73 @@
+{{ define "users.html" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Users — Service Monitor</title>
+    {{ template "styles" . }}
+</head>
+<body>
+    {{ template "navbar" . }}
+    <div class="container">
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+    <h1 class="page-title" style="margin-bottom:0;">Users</h1>
+    <a href="/admin/users/new" class="btn btn-primary">+ Add User</a>
+</div>
+
+{{ if .Flash }}
+<div style="background:#064e3b; border:1px solid #065f46; color:#34d399; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem;">
+    ✓ {{ .Flash }}
+</div>
+{{ end }}
+{{ if .FlashError }}
+<div style="background:#450a0a; border:1px solid #7f1d1d; color:#f87171; padding:0.75rem 1rem; border-radius:0.5rem; margin-bottom:1rem;">
+    ✗ {{ .FlashError }}
+</div>
+{{ end }}
+
+<div class="card" style="padding:0;">
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{ range .Users }}
+    <tr>
+        <td>
+            {{ .Username }}
+            {{ if eq .Username $.CurrentUser }}
+                <span class="badge badge-up" style="margin-left:0.5rem; font-size:0.7rem;">you</span>
+            {{ end }}
+        </td>
+        <td style="color:#94a3b8; font-size:0.875rem;">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
+        <td>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                <a href="/admin/users/{{ .Username }}/password"
+                   class="btn btn-ghost" style="padding:0.3rem 0.6rem; font-size:0.8rem;">
+                    Change Password
+                </a>
+                {{ if ne .Username $.CurrentUser }}
+                <form method="POST" action="/admin/users/{{ .Username }}/delete"
+                      onsubmit="return confirm('Delete user {{ .Username }}? This cannot be undone.')"
+                      style="display:inline;">
+                    <button class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Delete</button>
+                </form>
+                {{ end }}
+            </div>
+        </td>
+    </tr>
+    {{ end }}
+    </tbody>
+</table>
+</div>
+
+    </div>
+</body>
+</html>
+{{ end }}

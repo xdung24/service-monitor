@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xdung24/service-monitor/internal/config"
+	"github.com/xdung24/service-monitor/internal/database"
 	"github.com/xdung24/service-monitor/internal/scheduler"
 	"github.com/xdung24/service-monitor/internal/web/handlers"
 )
@@ -38,14 +39,14 @@ func mustParseTemplates() *template.Template {
 }
 
 // NewRouter builds and returns the Gin router.
-func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.Handler {
+func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiScheduler, cfg *config.Config) http.Handler {
 	r := gin.Default()
 
 	// Templates are embedded in the binary at compile time; any parse error
 	// crashes the process immediately at startup.
 	r.SetHTMLTemplate(mustParseTemplates())
 
-	h := handlers.New(db, sched, cfg)
+	h := handlers.New(usersDB, registry, msched, cfg)
 
 	// Health endpoint (for Docker HEALTHCHECK)
 	r.GET("/healthz", func(c *gin.Context) {
@@ -91,6 +92,14 @@ func NewRouter(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) http.
 		auth.POST("/notifications/:id/delete", h.NotificationDelete)
 		auth.POST("/notifications/:id/test", h.NotificationTest)
 		auth.GET("/notifications/logs", h.NotificationLogList)
+
+		// User management
+		auth.GET("/admin/users", h.UserList)
+		auth.GET("/admin/users/new", h.UserNew)
+		auth.POST("/admin/users", h.UserCreate)
+		auth.GET("/admin/users/:username/password", h.UserPasswordPage)
+		auth.POST("/admin/users/:username/password", h.UserChangePassword)
+		auth.POST("/admin/users/:username/delete", h.UserDelete)
 	}
 
 	return r

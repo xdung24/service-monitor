@@ -276,3 +276,59 @@ func (s *Scheduler) RecordHeartbeat(m *models.Monitor, status, latencyMs int, me
 		log.Printf("scheduler: push update last_status for monitor %d: %v", m.ID, err)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// MultiScheduler — one Scheduler per user
+// ---------------------------------------------------------------------------
+
+// MultiScheduler manages a set of per-user Scheduler instances.
+type MultiScheduler struct {
+	mu         sync.RWMutex
+	schedulers map[string]*Scheduler
+}
+
+// NewMulti creates a new MultiScheduler.
+func NewMulti() *MultiScheduler {
+	return &MultiScheduler{schedulers: make(map[string]*Scheduler)}
+}
+
+// StartForUser creates and starts a Scheduler for the given user using their DB.
+// If a scheduler is already running for the user, this is a no-op.
+func (ms *MultiScheduler) StartForUser(username string, db *sql.DB) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if _, exists := ms.schedulers[username]; exists {
+		return
+	}
+
+	s := New(db)
+	s.Start()
+	ms.schedulers[username] = s
+}
+
+// ForUser returns the Scheduler for the given user, or nil if not yet started.
+func (ms *MultiScheduler) ForUser(username string) *Scheduler {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	return ms.schedulers[username]
+}
+
+// StopUser stops and removes the scheduler for a single user.
+func (ms *MultiScheduler) StopUser(username string) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	if s, ok := ms.schedulers[username]; ok {
+		s.Stop()
+		delete(ms.schedulers, username)
+	}
+}
+
+// Stop stops all per-user schedulers.
+func (ms *MultiScheduler) Stop() {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	for _, s := range ms.schedulers {
+		s.Stop()
+	}
+}

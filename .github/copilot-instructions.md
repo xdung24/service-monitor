@@ -26,28 +26,37 @@ go test ./...                               # run tests
 ## Project Structure
 
 ```
-cmd/server/              Entry point (main.go) — HTTP server + graceful shutdown
+cmd/server/              Entry point (main.go) — opens DBs, starts schedulers, HTTP server + graceful shutdown
 internal/
-  config/                Env-based config (LISTEN_ADDR, DB_PATH, SECRET_KEY)
-  database/              SQLite open/close + migration runner
-    migrations/          Embedded SQL files (0001_init.up.sql, etc.)
+  config/                Env-based config (LISTEN_ADDR, DATA_DIR, SECRET_KEY)
+  database/              SQLite open/close + migration runners + per-user Registry
+    migrations_users/    Embedded SQL for shared users.db  (users + push_tokens tables)
+    migrations_user/     Embedded SQL for per-user data.db (monitors, heartbeats, notifications, …)
+    registry.go          Registry — lazily opens & caches per-user *sql.DB connections
   models/                Data types (Monitor, Heartbeat, User) + DB stores
-  monitor/               Monitor checker implementations (HTTP, TCP, Ping)
-  scheduler/             Goroutine-per-monitor periodic check scheduler
-  notifier/              Notification providers (to be implemented)
+  monitor/               Monitor checker implementations (HTTP, TCP, Ping, DNS, SMTP, Push)
+  scheduler/             Goroutine-per-monitor periodic check scheduler + MultiScheduler
+  notifier/              Notification providers (Slack, Discord, ntfy, Telegram, Email, Webhook)
   web/
     router.go            Gin router setup + embedded template loading
     embed.go             //go:embed directive for templates/*.html
     router_test.go       Single TestTemplatesParse test (parses all templates)
     handlers/
-      dashboard.go       Auth middleware, setup/login/logout, dashboard
+      dashboard.go       Auth middleware, setup/login/logout, dashboard, per-request context helpers
       monitors.go        Monitor CRUD handlers
+      notifications.go   Notification provider CRUD + test + log handlers
+      users.go           User management handlers (list, create, change-password, delete)
       auth_token.go      HMAC token sign/verify
     templates/           HTML templates (SSR, dark theme)
       partials.html      Shared CSS (styles) and navbar defines
       dashboard.html     Monitor list page
       monitor_form.html  Create/edit monitor form
       monitor_detail.html Monitor heartbeat history
+      notification_list.html  Notification providers list
+      notification_form.html  Create/edit notification form
+      notification_log.html   Notification send history
+      users.html         User management list page
+      user_form.html     Create user / change password form
       login.html         Login page
       setup.html         First-run setup wizard
       error.html         Error page
@@ -55,6 +64,41 @@ Dockerfile               Multi-stage, non-root, alpine-based
 compose.yaml             Docker Compose
 Makefile                 build, run, dev, test, lint, clean, docker-build
 ```
+
+## Database Architecture
+
+The app uses **two tiers of SQLite databases** to eliminate write-lock contention between users.
+
+### Shared users database (`DATA_DIR/users.db`)
+- Migration source: `internal/database/migrations_users/`
+- Tables: `users`, `push_tokens`
+- `push_tokens` maps `token → username` so the unauthenticated `GET /push/:token` endpoint can resolve the owning user without touching any per-user DB.
+- Opened once at startup by `database.Open` + `database.MigrateUsersDB`.
+
+### Per-user data database (`DATA_DIR/users/<username>/data.db`)
+- Migration source: `internal/database/migrations_user/`
+- Tables: `monitors`, `heartbeats`, `notifications`, `monitor_notifications`, `notification_logs`
+- Opened lazily on first request via `database.Registry.Get(username)`.
+- Each user gets exactly one writer connection (`SetMaxOpenConns(1)`).
+
+### Registry (`internal/database/registry.go`)
+- `Registry.Get(username)` opens + migrates + caches the per-user DB.
+- `Registry.Remove(username)` closes and evicts a cached connection (used on user deletion).
+- `Registry.Close()` closes all connections on shutdown.
+
+### MultiScheduler (`internal/scheduler/scheduler.go`)
+- Wraps `map[username]*Scheduler`.
+- `StartForUser(username, db)` creates and starts a Scheduler for one user (no-op if already running).
+- `ForUser(username)` returns the per-user Scheduler.
+- `StopUser(username)` stops and removes a single user's Scheduler.
+
+### Auth middleware (`AuthRequired()` in `dashboard.go`)
+After validating the session cookie it calls `registry.Get(username)` and injects two keys into the Gin context:
+- `"sm_user_db"` → `*sql.DB` (per-user DB)
+- `"sm_username"` → `string`
+
+All protected handlers access stores via context helpers defined on `Handler`:
+- `h.monitorStore(c)`, `h.heartbeatStore(c)`, `h.notifStore(c)`, `h.notifLogStore(c)`, `h.schedFor(c)`
 
 ## Key Conventions
 
@@ -65,6 +109,7 @@ Makefile                 build, run, dev, test, lint, clean, docker-build
 - **No CGO**: all dependencies must be pure Go (no CGO required)
 - **Templates**: each page is a `{{ define "filename.html" }}` block in its own file, pulling in `{{ template "styles" }}` and `{{ template "navbar" }}` from `partials.html`
 - **SQL migrations**: filename format `NNNN_description.up.sql` / `NNNN_description.down.sql`; embedded via `//go:embed` in `database.go`
+- **Never edit existing migration files** — always add a new numbered migration
 
 ## Feature Roadmap
 
@@ -93,6 +138,21 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 3. Add a fieldset to `notification_form.html` and toggle it in the existing `showFields()` JS
 4. Mark the feature `✅ Done` in `FEATURES.md`
 
+## User Management Routes
+
+All routes are under the `AuthRequired` middleware group:
+
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | `/admin/users` | `UserList` |
+| GET | `/admin/users/new` | `UserNew` |
+| POST | `/admin/users` | `UserCreate` |
+| GET | `/admin/users/:username/password` | `UserPasswordPage` |
+| POST | `/admin/users/:username/password` | `UserChangePassword` |
+| POST | `/admin/users/:username/delete` | `UserDelete` |
+
+Deleting: cannot delete own account or last user. Deletion also calls `UnregisterAllPushTokens`, `StopUser`, `Registry.Remove`.
+
 ## Testing Philosophy
 
 - **Prefer minimal tests** — do not add unit tests for every function or handler.
@@ -104,8 +164,9 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 ## Database
 
 - SQLite with WAL mode enabled, `_foreign_keys=ON`
-- Single writer (`SetMaxOpenConns(1)`)
+- Single writer per DB file (`SetMaxOpenConns(1)`)
 - Migrations are embedded in the binary — never edit existing migration files, always add new ones
+- Two embed FSes in `database.go`: `usersMigrationsFS` (`migrations_users/*.sql`) and `userMigrationsFS` (`migrations_user/*.sql`)
 
 ## Communication Style
 
@@ -117,3 +178,4 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 - Session tokens: HMAC-SHA256 signed, stored in `HttpOnly` cookies
 - `SECRET_KEY` env var must be set to a strong random value in production
 - Templates use `html/template` (auto-escaping) — never use `text/template` for HTML
+- Push tokens are registered in `users.db` so they can be resolved without exposing per-user DB paths

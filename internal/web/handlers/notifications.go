@@ -14,7 +14,8 @@ import (
 
 // NotificationList renders the notifications management page.
 func (h *Handler) NotificationList(c *gin.Context) {
-	notifs, err := h.notifications.List()
+	nstore := h.notifStore(c)
+	notifs, err := nstore.List()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
 		return
@@ -24,7 +25,7 @@ func (h *Handler) NotificationList(c *gin.Context) {
 	testedName := ""
 	if idStr := c.Query("tested"); idStr != "" {
 		if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-			if n, _ := h.notifications.Get(id); n != nil {
+			if n, _ := nstore.Get(id); n != nil {
 				testedName = n.Name
 			}
 		}
@@ -59,7 +60,7 @@ func (h *Handler) NotificationCreate(c *gin.Context) {
 	}
 	n.Config = cfgJSON
 
-	id, err := h.notifications.Create(n)
+	id, err := h.notifStore(c).Create(n)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "notification_form.html", gin.H{
 			"Notification": n, "IsNew": true, "Error": err.Error(),
@@ -103,7 +104,7 @@ func (h *Handler) NotificationUpdate(c *gin.Context) {
 	n.ID = existing.ID
 	n.Config = cfgJSON
 
-	if err := h.notifications.Update(n); err != nil {
+	if err := h.notifStore(c).Update(n); err != nil {
 		c.HTML(http.StatusInternalServerError, "notification_form.html", gin.H{
 			"Notification": n, "IsNew": false, "Error": err.Error(),
 			"Config": notificationConfigMap(cfgJSON),
@@ -119,7 +120,7 @@ func (h *Handler) NotificationDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.notifications.Delete(n.ID)
+	h.notifStore(c).Delete(n.ID)
 	c.Redirect(http.StatusFound, "/notifications")
 }
 
@@ -158,7 +159,7 @@ func (h *Handler) NotificationTest(c *gin.Context) {
 	if sendErr != nil {
 		errStr = sendErr.Error()
 	}
-	_ = h.notifLogs.Insert(&models.NotificationLog{
+	_ = h.notifLogStore(c).Insert(&models.NotificationLog{
 		NotificationID:   &n.ID,
 		MonitorName:      "[Test]",
 		NotificationName: n.Name,
@@ -177,7 +178,7 @@ func (h *Handler) NotificationTest(c *gin.Context) {
 
 // NotificationLogList renders the notification send history page.
 func (h *Handler) NotificationLogList(c *gin.Context) {
-	logs, err := h.notifLogs.List(200)
+	logs, err := h.notifLogStore(c).List(200)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
 		return
@@ -195,7 +196,7 @@ func (h *Handler) getNotification(c *gin.Context) (*models.Notification, bool) {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Invalid notification ID"})
 		return nil, false
 	}
-	n, err := h.notifications.Get(id)
+	n, err := h.notifStore(c).Get(id)
 	if err != nil || n == nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "Notification not found"})
 		return nil, false

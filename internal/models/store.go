@@ -259,6 +259,70 @@ func (s *UserStore) Create(username, hashedPassword string) error {
 	return nil
 }
 
+// ListAll returns all user records from the users database.
+func (s *UserStore) ListAll() ([]*User, error) {
+	rows, err := s.db.Query(`SELECT id, username, password, created_at FROM users ORDER BY id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		u := &User{}
+		if err := rows.Scan(&u.ID, &u.Username, &u.Password, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// RegisterPushToken records a mapping from push token to username in the shared users DB.
+func (s *UserStore) RegisterPushToken(token, username string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO push_tokens (token, username) VALUES (?, ?)
+		 ON CONFLICT(token) DO UPDATE SET username=excluded.username`,
+		token, username,
+	)
+	return err
+}
+
+// UnregisterPushToken removes the push token mapping from the shared users DB.
+func (s *UserStore) UnregisterPushToken(token string) error {
+	_, err := s.db.Exec(`DELETE FROM push_tokens WHERE token=?`, token)
+	return err
+}
+
+// LookupPushToken returns the username associated with the given push token.
+// Returns sql.ErrNoRows (wrapped) if the token is not registered.
+func (s *UserStore) LookupPushToken(token string) (string, error) {
+	var username string
+	err := s.db.QueryRow(`SELECT username FROM push_tokens WHERE token=?`, token).Scan(&username)
+	if err != nil {
+		return "", err
+	}
+	return username, nil
+}
+
+// UnregisterAllPushTokens removes every push token that belongs to the given user.
+func (s *UserStore) UnregisterAllPushTokens(username string) error {
+	_, err := s.db.Exec(`DELETE FROM push_tokens WHERE username=?`, username)
+	return err
+}
+
+// Delete removes a user record from the database.
+func (s *UserStore) Delete(username string) error {
+	_, err := s.db.Exec(`DELETE FROM users WHERE username=?`, username)
+	return err
+}
+
+// UpdatePassword replaces the stored hashed password for a user.
+func (s *UserStore) UpdatePassword(username, hashedPassword string) error {
+	_, err := s.db.Exec(`UPDATE users SET password=? WHERE username=?`, hashedPassword, username)
+	return err
+}
+
 // ---------------------------------------------------------------------------
 // MonitorStore — state tracking for notifications
 // ---------------------------------------------------------------------------

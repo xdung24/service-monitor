@@ -17,7 +17,7 @@ import (
 
 // MonitorNew renders the new monitor form.
 func (h *Handler) MonitorNew(c *gin.Context) {
-	allNotifs, _ := h.notifications.List()
+	allNotifs, _ := h.notifStore(c).List()
 	c.HTML(http.StatusOK, "monitor_form.html", gin.H{
 		"Monitor":        &models.Monitor{IntervalSeconds: 60, TimeoutSeconds: 30, Retries: 1, NotifyOnFailure: true, NotifyOnSuccess: true},
 		"IsNew":          true,
@@ -32,7 +32,7 @@ func (h *Handler) MonitorNew(c *gin.Context) {
 func (h *Handler) MonitorCreate(c *gin.Context) {
 	m, err := monitorFromForm(c)
 	if err != nil {
-		allNotifs, _ := h.notifications.List()
+		allNotifs, _ := h.notifStore(c).List()
 		c.HTML(http.StatusBadRequest, "monitor_form.html", gin.H{
 			"Monitor": m, "IsNew": true, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
@@ -41,9 +41,14 @@ func (h *Handler) MonitorCreate(c *gin.Context) {
 		return
 	}
 
-	id, err := h.monitors.Create(m)
+	// Ensure push monitors always have a token.
+	if m.Type == models.MonitorTypePush && m.PushToken == "" {
+		m.PushToken = generatePushToken()
+	}
+
+	id, err := h.monitorStore(c).Create(m)
 	if err != nil {
-		allNotifs, _ := h.notifications.List()
+		allNotifs, _ := h.notifStore(c).List()
 		c.HTML(http.StatusInternalServerError, "monitor_form.html", gin.H{
 			"Monitor": m, "IsNew": true, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
@@ -53,8 +58,15 @@ func (h *Handler) MonitorCreate(c *gin.Context) {
 	}
 
 	m.ID = id
-	_ = h.notifications.ReplaceMonitorLinks(m.ID, notifIDsFromForm(c))
-	h.sched.Schedule(m)
+	_ = h.notifStore(c).ReplaceMonitorLinks(m.ID, notifIDsFromForm(c))
+
+	// Register the push token in the shared users DB so the unauthenticated
+	// /push/:token endpoint can resolve which user's DB to look in.
+	if m.Type == models.MonitorTypePush && m.PushToken != "" {
+		_ = h.users.RegisterPushToken(m.PushToken, h.username(c))
+	}
+
+	h.schedFor(c).Schedule(m)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -65,9 +77,10 @@ func (h *Handler) MonitorDetail(c *gin.Context) {
 		return
 	}
 
-	beats, _ := h.heartbeat.Latest(m.ID, 100)
-	uptime24h, _ := h.heartbeat.UptimePercent(m.ID, time.Now().Add(-24*time.Hour))
-	uptime30d, _ := h.heartbeat.UptimePercent(m.ID, time.Now().Add(-30*24*time.Hour))
+	bstore := h.heartbeatStore(c)
+	beats, _ := bstore.Latest(m.ID, 100)
+	uptime24h, _ := bstore.UptimePercent(m.ID, time.Now().Add(-24*time.Hour))
+	uptime30d, _ := bstore.UptimePercent(m.ID, time.Now().Add(-30*24*time.Hour))
 
 	c.HTML(http.StatusOK, "monitor_detail.html", gin.H{
 		"Monitor":   m,
@@ -83,8 +96,9 @@ func (h *Handler) MonitorEdit(c *gin.Context) {
 	if !ok {
 		return
 	}
-	allNotifs, _ := h.notifications.List()
-	linked, _ := h.notifications.ListForMonitor(m.ID)
+	nstore := h.notifStore(c)
+	allNotifs, _ := nstore.List()
+	linked, _ := nstore.ListForMonitor(m.ID)
 	linkedIDs := make(map[int64]bool, len(linked))
 	for _, n := range linked {
 		linkedIDs[n.ID] = true
@@ -106,10 +120,11 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 		return
 	}
 
+	nstore := h.notifStore(c)
 	updated, err := monitorFromForm(c)
 	if err != nil {
-		allNotifs, _ := h.notifications.List()
-		linked, _ := h.notifications.ListForMonitor(m.ID)
+		allNotifs, _ := nstore.List()
+		linked, _ := nstore.ListForMonitor(m.ID)
 		linkedIDs := make(map[int64]bool, len(linked))
 		for _, n := range linked {
 			linkedIDs[n.ID] = true
@@ -123,8 +138,22 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 	}
 	updated.ID = m.ID
 
-	if err := h.monitors.Update(updated); err != nil {
-		allNotifs, _ := h.notifications.List()
+	// Manage push token registration in the shared users DB.
+	if m.Type == models.MonitorTypePush && m.PushToken != "" {
+		// Unregister old token if type changes away from push or token changes.
+		if updated.Type != models.MonitorTypePush || updated.PushToken != m.PushToken {
+			_ = h.users.UnregisterPushToken(m.PushToken)
+		}
+	}
+	if updated.Type == models.MonitorTypePush {
+		if updated.PushToken == "" {
+			updated.PushToken = generatePushToken()
+		}
+		_ = h.users.RegisterPushToken(updated.PushToken, h.username(c))
+	}
+
+	if err := h.monitorStore(c).Update(updated); err != nil {
+		allNotifs, _ := nstore.List()
 		c.HTML(http.StatusInternalServerError, "monitor_form.html", gin.H{
 			"Monitor": updated, "IsNew": false, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
@@ -133,8 +162,8 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 		return
 	}
 
-	_ = h.notifications.ReplaceMonitorLinks(updated.ID, notifIDsFromForm(c))
-	h.sched.Schedule(updated)
+	_ = nstore.ReplaceMonitorLinks(updated.ID, notifIDsFromForm(c))
+	h.schedFor(c).Schedule(updated)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -330,7 +359,7 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 		// SMTPPassword is not exported and must be re-entered after import.
 	}
 
-	id, err := h.monitors.Create(m)
+	id, err := h.monitorStore(c).Create(m)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "Failed to save monitor: " + err.Error()})
 		return
@@ -346,7 +375,22 @@ func (h *Handler) MonitorPush(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "token required"})
 		return
 	}
-	m, err := h.monitors.GetByPushToken(token)
+
+	// Resolve the owning user from the shared push_tokens table.
+	username, err := h.users.LookupPushToken(token)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"ok": false, "error": "monitor not found"})
+		return
+	}
+
+	db, err := h.registry.Get(username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "internal error"})
+		return
+	}
+
+	mstore := models.NewMonitorStore(db)
+	m, err := mstore.GetByPushToken(token)
 	if err != nil || m == nil {
 		c.JSON(http.StatusNotFound, gin.H{"ok": false, "error": "monitor not found"})
 		return
@@ -355,7 +399,14 @@ func (h *Handler) MonitorPush(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "monitor is paused"})
 		return
 	}
-	h.sched.RecordHeartbeat(m, 1, 0, "push received")
+
+	sched := h.msched.ForUser(username)
+	if sched == nil {
+		// Scheduler not yet running — start it lazily.
+		h.msched.StartForUser(username, db)
+		sched = h.msched.ForUser(username)
+	}
+	sched.RecordHeartbeat(m, 1, 0, "push received")
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -365,8 +416,12 @@ func (h *Handler) MonitorDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.sched.Unschedule(m.ID)
-	h.monitors.Delete(m.ID)
+	// Unregister push token from the shared users DB.
+	if m.Type == models.MonitorTypePush && m.PushToken != "" {
+		_ = h.users.UnregisterPushToken(m.PushToken)
+	}
+	h.schedFor(c).Unschedule(m.ID)
+	h.monitorStore(c).Delete(m.ID)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -376,8 +431,8 @@ func (h *Handler) MonitorPause(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.monitors.SetActive(m.ID, false)
-	h.sched.Unschedule(m.ID)
+	h.monitorStore(c).SetActive(m.ID, false)
+	h.schedFor(c).Unschedule(m.ID)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -387,9 +442,9 @@ func (h *Handler) MonitorResume(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.monitors.SetActive(m.ID, true)
+	h.monitorStore(c).SetActive(m.ID, true)
 	m.Active = true
-	h.sched.Schedule(m)
+	h.schedFor(c).Schedule(m)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -405,7 +460,7 @@ func (h *Handler) getMonitor(c *gin.Context) (*models.Monitor, bool) {
 		return nil, false
 	}
 
-	m, err := h.monitors.Get(id)
+	m, err := h.monitorStore(c).Get(id)
 	if err != nil || m == nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "Monitor not found"})
 		return nil, false

@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/xdung24/service-monitor/internal/config"
 	"github.com/xdung24/service-monitor/internal/database"
+	"github.com/xdung24/service-monitor/internal/models"
 	"github.com/xdung24/service-monitor/internal/scheduler"
 	"github.com/xdung24/service-monitor/internal/web"
 )
@@ -18,21 +20,42 @@ import (
 func main() {
 	cfg := config.Load()
 
-	db, err := database.Open(cfg.DBPath)
+	// Open and migrate the shared users database.
+	usersDB, err := database.Open(filepath.Join(cfg.DataDir, "users.db"))
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		log.Fatalf("failed to open users database: %v", err)
 	}
-	defer db.Close()
+	defer usersDB.Close()
 
-	if err := database.Migrate(db); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+	if err := database.MigrateUsersDB(usersDB); err != nil {
+		log.Fatalf("failed to run users migrations: %v", err)
 	}
 
-	sched := scheduler.New(db)
-	sched.Start()
-	defer sched.Stop()
+	// Create per-user DB registry.
+	registry := database.NewRegistry(cfg.DataDir)
+	defer registry.Close()
 
-	router := web.NewRouter(db, sched, cfg)
+	// Create multi-scheduler.
+	msched := scheduler.NewMulti()
+	defer msched.Stop()
+
+	// Initialize databases and schedulers for all existing users.
+	userStore := models.NewUserStore(usersDB)
+	existingUsers, err := userStore.ListAll()
+	if err != nil {
+		log.Fatalf("failed to list users: %v", err)
+	}
+	for _, u := range existingUsers {
+		db, err := registry.Get(u.Username)
+		if err != nil {
+			log.Printf("warning: failed to open db for user %q: %v", u.Username, err)
+			continue
+		}
+		msched.StartForUser(u.Username, db)
+	}
+	log.Printf("initialized %d user database(s)", len(existingUsers))
+
+	router := web.NewRouter(usersDB, registry, msched, cfg)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

@@ -85,9 +85,9 @@ This document tracks which features from Uptime Kuma are implemented, in progres
 | Cloudflare Tunnel integration | ⬜ Planned | Expose via cloudflared without open port |
 | Dark/light theme toggle | ⬜ Planned | User preference stored in cookie |
 | Latency sparkline charts | ⬜ Planned | Inline SVG trend on dashboard/detail |
-| Multi-user support | ⬜ Planned | Per-user monitors and notification settings |
+| Multi-user support | ✅ Done | Per-user monitors/notifications in isolated SQLite DB files; shared `users.db` for auth + push token routing; `Registry` + `MultiScheduler` for per-user DB and scheduler lifecycle |
 | Import / export monitors | ✅ Done | Export a single monitor's config as JSON (`GET /monitors/:id/export`); import via file upload (`POST /monitors/import`) |
-| Backup / restore all config | ⬜ Planned | Export all monitors, notifications, and settings into one JSON or YAML file; restore via upload or CLI flag |
+| User management admin page | ✅ Done | `/admin/users` — list, add, change password, delete users |
 
 ---
 

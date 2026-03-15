@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xdung24/service-monitor/internal/config"
+	"github.com/xdung24/service-monitor/internal/database"
 	"github.com/xdung24/service-monitor/internal/models"
 	"github.com/xdung24/service-monitor/internal/scheduler"
 	"golang.org/x/crypto/bcrypt"
@@ -14,33 +15,71 @@ import (
 
 const sessionCookieName = "sm_session"
 
+// Context keys injected by AuthRequired middleware.
+const (
+	ctxKeyUserDB   = "sm_user_db"
+	ctxKeyUsername = "sm_username"
+)
+
 // Handler holds shared dependencies for all HTTP handlers.
 type Handler struct {
-	db            *sql.DB
-	sched         *scheduler.Scheduler
-	cfg           *config.Config
-	monitors      *models.MonitorStore
-	heartbeat     *models.HeartbeatStore
-	users         *models.UserStore
-	notifications *models.NotificationStore
-	notifLogs     *models.NotificationLogStore
+	usersDB  *sql.DB                   // shared users database (auth + push_tokens)
+	registry *database.Registry        // per-user data DB registry
+	msched   *scheduler.MultiScheduler // per-user schedulers
+	cfg      *config.Config
+	users    *models.UserStore // backed by usersDB
 }
 
 // New creates a Handler.
-func New(db *sql.DB, sched *scheduler.Scheduler, cfg *config.Config) *Handler {
+func New(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiScheduler, cfg *config.Config) *Handler {
 	return &Handler{
-		db:            db,
-		sched:         sched,
-		cfg:           cfg,
-		monitors:      models.NewMonitorStore(db),
-		heartbeat:     models.NewHeartbeatStore(db),
-		users:         models.NewUserStore(db),
-		notifications: models.NewNotificationStore(db),
-		notifLogs:     models.NewNotificationLogStore(db),
+		usersDB:  usersDB,
+		registry: registry,
+		msched:   msched,
+		cfg:      cfg,
+		users:    models.NewUserStore(usersDB),
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Per-request context helpers
+// ---------------------------------------------------------------------------
+
+func (h *Handler) userDB(c *gin.Context) *sql.DB {
+	db, _ := c.Get(ctxKeyUserDB)
+	return db.(*sql.DB)
+}
+
+func (h *Handler) username(c *gin.Context) string {
+	return c.GetString(ctxKeyUsername)
+}
+
+func (h *Handler) monitorStore(c *gin.Context) *models.MonitorStore {
+	return models.NewMonitorStore(h.userDB(c))
+}
+
+func (h *Handler) heartbeatStore(c *gin.Context) *models.HeartbeatStore {
+	return models.NewHeartbeatStore(h.userDB(c))
+}
+
+func (h *Handler) notifStore(c *gin.Context) *models.NotificationStore {
+	return models.NewNotificationStore(h.userDB(c))
+}
+
+func (h *Handler) notifLogStore(c *gin.Context) *models.NotificationLogStore {
+	return models.NewNotificationLogStore(h.userDB(c))
+}
+
+func (h *Handler) schedFor(c *gin.Context) *scheduler.Scheduler {
+	return h.msched.ForUser(h.username(c))
+}
+
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
+
 // AuthRequired is a Gin middleware that redirects unauthenticated requests to /login.
+// It also opens the per-user database and injects it into the request context.
 func (h *Handler) AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cookie, err := c.Cookie(sessionCookieName)
@@ -49,12 +88,20 @@ func (h *Handler) AuthRequired() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		username, _ := verifyToken(cookie, h.cfg.SecretKey)
+		db, err := h.registry.Get(username)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "failed to open user database"})
+			c.Abort()
+			return
+		}
+		c.Set(ctxKeyUserDB, db)
+		c.Set(ctxKeyUsername, username)
 		c.Next()
 	}
 }
 
 func (h *Handler) validSession(token string) bool {
-	// Simple HMAC-signed username token; replace with a proper session store for production.
 	username, ok := verifyToken(token, h.cfg.SecretKey)
 	if !ok {
 		return false
@@ -113,6 +160,12 @@ func (h *Handler) SetupSubmit(c *gin.Context) {
 		return
 	}
 
+	// Initialize per-user database and start the scheduler for the new user.
+	db, err := h.registry.Get(username)
+	if err == nil {
+		h.msched.StartForUser(username, db)
+	}
+
 	c.Redirect(http.StatusFound, "/login")
 }
 
@@ -163,7 +216,10 @@ func (h *Handler) Logout(c *gin.Context) {
 
 // Dashboard renders the main monitor list page.
 func (h *Handler) Dashboard(c *gin.Context) {
-	monitors, err := h.monitors.List()
+	mstore := h.monitorStore(c)
+	bstore := h.heartbeatStore(c)
+
+	monitors, err := mstore.List()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
 		return
@@ -171,14 +227,14 @@ func (h *Handler) Dashboard(c *gin.Context) {
 
 	now := time.Now()
 	for _, m := range monitors {
-		beats, _ := h.heartbeat.Latest(m.ID, 1)
+		beats, _ := bstore.Latest(m.ID, 1)
 		if len(beats) > 0 {
 			m.LastStatus = &beats[0].Status
 			m.LastLatency = &beats[0].LatencyMs
 			m.LastMessage = &beats[0].Message
 		}
-		m.Uptime24h, _ = h.heartbeat.UptimePercent(m.ID, now.Add(-24*time.Hour))
-		m.Uptime30d, _ = h.heartbeat.UptimePercent(m.ID, now.Add(-30*24*time.Hour))
+		m.Uptime24h, _ = bstore.UptimePercent(m.ID, now.Add(-24*time.Hour))
+		m.Uptime30d, _ = bstore.UptimePercent(m.ID, now.Add(-30*24*time.Hour))
 	}
 
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{"Monitors": monitors})

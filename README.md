@@ -4,10 +4,15 @@ A production-ready, self-hosted uptime monitoring tool written in Go.
 
 ## Features
 
-- HTTP / HTTPS, TCP, Ping monitor types (more coming)
+- HTTP / HTTPS, TCP, Ping, DNS, SMTP, Push/Heartbeat monitor types
+- HTTP extended checks: keyword match, JSON path, XPath, custom headers/body, bearer auth, redirect control
 - Server-side rendered dashboard (no JavaScript build step)
-- SQLite database with automatic migrations
+- **Per-user SQLite databases** — each user's monitors and notifications live in their own database file, eliminating write-lock contention
+- Automatic schema migrations (embedded in binary)
 - bcrypt password hashing, HMAC-signed session cookies
+- Notification providers: Slack, Discord, ntfy, Telegram, Email, Webhook
+- User management admin panel — add, delete, and change passwords
+- Monitor import / export (JSON)
 - Graceful shutdown
 - Docker + Docker Compose support
 - Single compiled binary — no runtime dependencies
@@ -26,12 +31,21 @@ go run ./cmd/server
 
 All config is via environment variables:
 
-| Variable      | Default                          | Description              |
-|---------------|----------------------------------|--------------------------|
-| `LISTEN_ADDR` | `:3001`                          | HTTP listen address      |
-| `DB_PATH`     | `./data/service-monitor.db`      | SQLite database path     |
-| `DATA_DIR`    | `./data`                         | Data directory           |
-| `SECRET_KEY`  | `change-me-in-production`        | HMAC key for sessions    |
+| Variable      | Default                   | Description                          |
+|---------------|---------------------------|--------------------------------------|
+| `LISTEN_ADDR` | `:3001`                   | HTTP listen address                  |
+| `DATA_DIR`    | `./data`                  | Root data directory                  |
+| `SECRET_KEY`  | `change-me-in-production` | HMAC key for sessions                |
+
+### Database layout
+
+```
+DATA_DIR/
+  users.db                          # shared — user accounts + push token index
+  users/<username>/data.db           # per-user — monitors, heartbeats, notifications
+```
+
+Each user's data is isolated in their own SQLite file. The shared `users.db` holds only the `users` table and a `push_tokens` index (needed for unauthenticated `/push/:token` routing).
 
 ## Docker
 
@@ -54,12 +68,13 @@ make lint    # vet + staticcheck
 cmd/server/          Entry point
 internal/
   config/            Environment config
-  database/          SQLite open + migrate
-    migrations/      SQL migration files
+  database/          SQLite open + migrate + per-user Registry
+    migrations_users/  SQL migrations for shared users.db
+    migrations_user/   SQL migrations for per-user data.db
   models/            Data models + DB stores
   monitor/           Monitor checker implementations
-  scheduler/         Periodic check scheduler
-  notifier/          Notification providers (coming soon)
+  scheduler/         Periodic check scheduler + MultiScheduler
+  notifier/          Notification providers
   web/
     handlers/        HTTP request handlers
     templates/       HTML templates (SSR)
@@ -70,10 +85,10 @@ Makefile
 
 ## Roadmap
 
-- [ ] DNS monitor type
-- [ ] Push (heartbeat) monitor type
-- [ ] Notification providers (Slack, Telegram, Email, Webhook)
 - [ ] Public status pages
 - [ ] Certificate expiry monitoring
-- [ ] Latency charts
-- [ ] API endpoints (JSON)
+- [ ] Latency sparkline charts
+- [ ] API keys (token-based access)
+- [ ] 2FA (TOTP)
+- [ ] Maintenance windows
+- [ ] Tags / labels on monitors
