@@ -44,6 +44,7 @@
                     <option value="websocket"   {{ if eq .Monitor.Type "websocket"   }}selected{{ end }}>WebSocket</option>
                     <option value="mqtt"        {{ if eq .Monitor.Type "mqtt"        }}selected{{ end }}>MQTT</option>
                     <option value="rabbitmq"    {{ if eq .Monitor.Type "rabbitmq"    }}selected{{ end }}>RabbitMQ</option>
+                    <option value="kafka"       {{ if eq .Monitor.Type "kafka"       }}selected{{ end }}>Kafka Producer</option>
                 </optgroup>
                 <optgroup label="Network / Protocol">
                     <option value="sip_options" {{ if eq .Monitor.Type "sip_options" }}selected{{ end }}>SIP Options</option>
@@ -373,6 +374,24 @@
             </small>
         </div>
 
+        <!-- Kafka Producer fields -->
+        <div id="kafka-fields" style="display:{{ if eq .Monitor.Type "kafka" }}block{{ else }}none{{ end }};">
+            <div class="form-group">
+                <label for="kafka_topic">Topic</label>
+                <input class="form-control" type="text" id="kafka_topic" name="kafka_topic"
+                       value="{{ .Monitor.KafkaTopic }}"
+                       placeholder="service-monitor-healthcheck" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Leave blank to use the default topic <code>service-monitor-healthcheck</code>.
+                    The topic is created automatically if it does not exist (requires auto-create enabled on the broker).
+                </small>
+            </div>
+            <small style="color:#64748b; font-size:0.775rem; display:block; margin-bottom:0.75rem;">
+                URL format: <code>broker:9092</code> — plain TCP, no scheme needed.
+                Produces a single JSON message; success indicates the broker is reachable and the topic is writable.
+            </small>
+        </div>
+
         <!-- SNMP fields -->
         {{ $snmpVer := .Monitor.SNMPVersion }}
         <div id="snmp-fields" style="display:{{ if eq .Monitor.Type "snmp" }}block{{ else }}none{{ end }};">
@@ -682,6 +701,7 @@ function toggleTypeFields() {
     document.getElementById('system_service-fields').style.display = (t === 'system_service') ? 'block' : 'none';
     document.getElementById('group-fields').style.display          = (t === 'group')          ? 'block' : 'none';
     document.getElementById('manual-fields').style.display         = (t === 'manual')         ? 'block' : 'none';
+    document.getElementById('kafka-fields').style.display          = (t === 'kafka')          ? 'block' : 'none';
     // push-fields
     var pf = document.getElementById('push-fields');
     if (pf) pf.style.display = (t === 'push') ? 'block' : 'none';
@@ -712,6 +732,8 @@ function toggleTypeFields() {
         urlInput.placeholder = 'mqtt://host:1883  or  mqtts://host:8883';
     } else if (t === 'rabbitmq') {
         urlInput.placeholder = 'http://localhost:15672  (management API base URL)';
+    } else if (t === 'kafka') {
+        urlInput.placeholder = 'broker:9092  (Kafka broker address)';
     } else if (t === 'snmp') {
         urlInput.placeholder = 'host:161  (port 161 used if omitted)';
     } else if (t === 'grpc') {

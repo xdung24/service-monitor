@@ -56,20 +56,19 @@ func (c *GRPCChecker) Check(ctx context.Context, m *models.Monitor) Result {
 		creds = insecure.NewCredentials()
 	}
 
-	dialCtx, dialCancel := context.WithTimeout(ctx, time.Duration(m.TimeoutSeconds)*time.Second)
-	defer dialCancel()
-
-	conn, err := grpc.DialContext(dialCtx, target, //nolint:staticcheck // DialContext deprecated in 1.69 but still works
+	conn, err := grpc.NewClient(target,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return Result{Status: 0, Message: fmt.Sprintf("connect: %v", err)}
 	}
 	defer conn.Close() //nolint:errcheck
 
+	checkCtx, checkCancel := context.WithTimeout(ctx, time.Duration(m.TimeoutSeconds)*time.Second)
+	defer checkCancel()
+
 	client := grpc_health_v1.NewHealthClient(conn)
-	resp, err := client.Check(ctx, &grpc_health_v1.HealthCheckRequest{
+	resp, err := client.Check(checkCtx, &grpc_health_v1.HealthCheckRequest{
 		Service: m.GRPCServiceName,
 	})
 	latency := int(time.Since(start).Milliseconds())

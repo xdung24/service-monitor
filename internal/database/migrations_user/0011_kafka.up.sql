@@ -1,0 +1,1 @@
+ALTER TABLE monitors ADD COLUMN kafka_topic TEXT NOT NULL DEFAULT '';

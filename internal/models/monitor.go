@@ -29,6 +29,7 @@ const (
 	MonitorTypeGroup         MonitorType = "group"
 	MonitorTypeManual        MonitorType = "manual"
 	MonitorTypeSIPOptions    MonitorType = "sip_options"
+	MonitorTypeKafka         MonitorType = "kafka"
 )
 
 // Monitor represents a monitored target.
@@ -111,6 +112,9 @@ type Monitor struct {
 
 	// Group monitor field
 	ParentID int64 `db:"parent_id"` // ID of parent group monitor; 0 = top-level
+
+	// Kafka Producer monitor field
+	KafkaTopic string `db:"kafka_topic"` // Kafka topic to produce a test message to
 
 	// TLS certificate expiry alert (HTTP only)
 	CertExpiryAlertDays int `db:"cert_expiry_alert_days"` // return DOWN when cert expires within N days; 0 = disabled

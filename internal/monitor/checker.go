@@ -97,6 +97,8 @@ func checkerFor(m *models.Monitor) Checker {
 		return &ManualChecker{}
 	case models.MonitorTypeSIPOptions:
 		return &SIPOptionsChecker{}
+	case models.MonitorTypeKafka:
+		return &KafkaChecker{}
 	default:
 		return &HTTPChecker{}
 	}

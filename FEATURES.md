@@ -36,7 +36,7 @@ This document tracks which features are implemented, in progress, or planned.
 | GameDig | ⬜ Planned | Game server query protocol |
 | Tailscale Ping | ✅ Done | `tailscale ping --c 1` subprocess; checks for pong/DERP |
 | Globalping | ✅ Done | Globalping API distributed ping check; polls for result |
-| Kafka Producer | ⬜ Planned | Produce a test message |
+| Kafka Producer | ✅ Done | Produce a test message to a configurable topic; broker reachability + write check |
 | Real Browser (Chromium) | ⬜ Planned | Headless browser via chromedp |
 | System Service | ✅ Done | Windows SCM (`sc.exe query`) / systemd (`systemctl is-active`) / launchd (`launchctl list`) |
 | Group / Manual | ✅ Done | Group: status derived from children; Manual: static UP/DOWN flag |

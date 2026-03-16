@@ -617,6 +617,9 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	// Group monitor
 	parentIDVal, _ := strconv.ParseInt(c.DefaultPostForm("parent_id", "0"), 10, 64)
 
+	// Kafka Producer monitor
+	kafkaTopic := c.DefaultPostForm("kafka_topic", "service-monitor-healthcheck")
+
 	m := &models.Monitor{
 		Name:                 name,
 		Type:                 monType,
@@ -673,6 +676,7 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 		ServiceName:          serviceName,
 		ManualStatus:         manualStatusVal,
 		ParentID:             parentIDVal,
+		KafkaTopic:           kafkaTopic,
 	}
 	if name == "" {
 		return m, &formError{"name is required"}

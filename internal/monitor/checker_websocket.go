@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/xdung24/service-monitor/internal/models"
 )
