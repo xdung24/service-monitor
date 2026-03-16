@@ -46,19 +46,33 @@ See `FEATURES.md` for current status of each item.
 
 ---
 
-## Phase 2 — Security Features
+## Phase 2 — Security Features ✅ Complete
 
-### 2.1 API Keys
-- Migration 0013 (users DB `migrations_users/`): `api_keys(id, username, name, token_hash, created_at, last_used_at)`
-- Generate random 32-byte token; display once; store bcrypt hash
+### 2.1 API Keys ✅
+- Migration `migrations_users/0002_api_keys`: `api_keys(id, username, name, token_hash, created_at, last_used_at)`
+- Generate random 32-byte token; display once; store SHA-256 hash
 - Auth middleware: accept `Authorization: Bearer <token>` alongside session cookie
 - Handlers: `/api-keys/*` CRUD
 
-### 2.2 Two-Factor Auth (TOTP)
-- Migration 0014 (users DB): add `totp_secret TEXT`, `totp_enabled INT DEFAULT 0` to users table
+### 2.2 Two-Factor Auth (TOTP) ✅
+- Migration `migrations_users/0003_2fa`: add `totp_secret TEXT`, `totp_enabled INT DEFAULT 0` to users table
 - Dependency: `github.com/pquerna/otp`
-- Login becomes two-step when enabled; `/account/2fa` setup page with QR code
-- Session: set a "needs-2fa" semaphore before full login
+- Login becomes two-step when enabled; `/account/2fa` setup page with QR code (embedded `data:` URI)
+- Pending cookie (`sm_pending`) gates the TOTP verification step
+
+### 2.3 Account Registration ✅
+- Migration `migrations_users/0004_registration_tokens` + `0005_token_expiry_settings`
+- On first startup (no users) a 30-minute system token is printed to the console; registering with it grants admin
+- `app_settings` table stores `registration_enabled` (default `true`); admin can toggle from `/admin/settings`
+- Admin can generate unlimited invite links (`created_by = admin username`, no expiry) from `/admin/users`
+- Open registration (no token) always creates a normal user
+
+### 2.4 Authorization ✅
+- Migration `migrations_users/0006_roles`: `is_admin INTEGER NOT NULL DEFAULT 0`; existing first user promoted on upgrade
+- `AdminRequired()` middleware gates `/admin/users/*` and `/admin/settings` routes
+- `UserStore.SetAdmin()` allows promote/demote; first startup-token registrant auto-promoted
+- Normal users are already isolated to their own data by the per-user DB design
+- Navbar hides Users/Settings links for non-admins; Users page shows Role column + Make Admin / Revoke Admin buttons
 
 ---
 

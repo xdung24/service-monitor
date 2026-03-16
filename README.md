@@ -5,14 +5,24 @@ A production-ready, self-hosted uptime monitoring tool written in Go.
 ## Features
 
 - HTTP / HTTPS, TCP, Ping, DNS, SMTP, Push/Heartbeat monitor types
-- HTTP extended checks: keyword match, JSON path, XPath, custom headers/body, bearer auth, redirect control
+- HTTP extended checks: keyword match, JSON path, XPath, custom headers/body, bearer auth, redirect control, TLS certificate expiry alerts
+- Database monitors: MySQL/MariaDB, PostgreSQL, MongoDB, Redis
 - Server-side rendered dashboard (no JavaScript build step)
 - **Per-user SQLite databases** — each user's monitors and notifications live in their own database file, eliminating write-lock contention
 - Automatic schema migrations (embedded in binary)
 - bcrypt password hashing, HMAC-signed session cookies
-- Notification providers: Slack, Discord, ntfy, Telegram, Email, Webhook
-- User management admin panel — add, delete, and change passwords
+- **API key authentication** — generate named tokens; `Authorization: Bearer` header accepted alongside session cookies
+- **Two-factor authentication (TOTP)** — QR code setup, per-user opt-in, enforced two-step login
+- **Role-based access control** — first user (via startup token) becomes admin; admin-only routes for user management and settings
+- **Account registration** — open registration or invite-link only; admin controls from settings page
+- Notification providers: Slack, Discord, ntfy, Telegram, Email (SMTP), Webhook
+- Public status pages — read-only pages showing selected monitors
+- Maintenance windows — suppress alerts during scheduled downtime
+- Tags / labels on monitors — color-coded, displayed on dashboard
 - Monitor import / export (JSON)
+- Dark/light theme toggle
+- Latency sparkline charts
+- User management admin panel — add, promote/demote, delete, change passwords
 - Graceful shutdown
 - Docker + Docker Compose support
 - Single compiled binary — no runtime dependencies
@@ -85,10 +95,10 @@ Makefile
 
 ## Roadmap
 
-- [ ] Public status pages
-- [ ] Certificate expiry monitoring
-- [ ] Latency sparkline charts
-- [ ] API keys (token-based access)
-- [ ] 2FA (TOTP)
-- [ ] Maintenance windows
-- [ ] Tags / labels on monitors
+- [ ] WebSocket Upgrade monitor
+- [ ] Docker Container monitor
+- [ ] More notification providers (PagerDuty, Gotify, Pushover, Matrix)
+- [ ] Proxy management
+- [ ] SNMP, MQTT, gRPC, SIP, Radius monitor types
+- [ ] Real Browser (Chromium) monitor
+- [ ] System Service (systemd/SCM) monitor

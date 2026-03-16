@@ -42,14 +42,13 @@ func (c *SMTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 		conn.SetDeadline(deadline) //nolint:errcheck
 	}
 
-	tlsCfg := &tls.Config{InsecureSkipVerify: m.SMTPIgnoreTLS} // #nosec G402 -- user opt-in
-
 	// Implicit TLS (SMTPS, typically port 465): wrap before any SMTP conversation.
 	if m.SMTPUseTLS {
 		host, _, _ := net.SplitHostPort(m.URL)
-		cfg := *tlsCfg
-		cfg.ServerName = host
-		tlsConn := tls.Client(conn, &cfg)
+		tlsConn := tls.Client(conn, &tls.Config{
+			ServerName:         host,
+			InsecureSkipVerify: m.SMTPIgnoreTLS, // #nosec G402 -- user opt-in
+		})
 		if err := tlsConn.Handshake(); err != nil {
 			return Result{Status: 0, Message: fmt.Sprintf("TLS handshake: %v", err)}
 		}
@@ -93,9 +92,10 @@ func (c *SMTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 			return Result{Status: 0, Message: fmt.Sprintf("STARTTLS rejected: %s", resp[0])}
 		}
 		host, _, _ := net.SplitHostPort(m.URL)
-		cfg := *tlsCfg
-		cfg.ServerName = host
-		tlsConn := tls.Client(conn, &cfg)
+		tlsConn := tls.Client(conn, &tls.Config{
+			ServerName:         host,
+			InsecureSkipVerify: m.SMTPIgnoreTLS, // #nosec G402 -- user opt-in
+		})
 		if err := tlsConn.Handshake(); err != nil {
 			return Result{Status: 0, Message: fmt.Sprintf("TLS handshake after STARTTLS: %v", err)}
 		}
