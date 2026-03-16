@@ -68,6 +68,7 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 		})
 		return
 	}
+	// #nosec G203 -- data URI is entirely server-generated base64 PNG; no user input is interpolated.
 	qrDataURI := template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()))
 
 	c.HTML(http.StatusOK, "account_2fa.html", h.pageData(c, gin.H{

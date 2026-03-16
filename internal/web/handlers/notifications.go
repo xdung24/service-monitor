@@ -120,7 +120,10 @@ func (h *Handler) NotificationDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.notifStore(c).Delete(n.ID)
+	if err := h.notifStore(c).Delete(n.ID); err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		return
+	}
 	c.Redirect(http.StatusFound, "/notifications")
 }
 

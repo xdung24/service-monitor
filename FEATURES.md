@@ -78,8 +78,8 @@ This document tracks which features are implemented, in progress, or planned.
 | Tags / labels on monitors | ✅ Done | Color-coded labels; assign to monitors; displayed on dashboard |
 | Proxy management | ⬜ Planned | Shared proxy config referenced by monitors |
 | Docker host management | ⬜ Planned | Registered Docker daemons for Docker monitor |
-| API keys | ⬜ Planned | Token-based API access |
-| 2FA (TOTP) | ⬜ Planned | TOTP QR code + enforced on login |
+| API keys | ✅ Done | SHA-256 hashed tokens; `Authorization: Bearer` auth alongside session cookies |
+| 2FA (TOTP) | ✅ Done | `pquerna/otp`; QR code setup page; two-step login flow; per-user opt-in |
 | Additional notification providers | ✅ Done (Slack, Discord, ntfy); ⬜ Planned (PagerDuty, Gotify, others) |
 | Remote browser config | ⬜ Planned | Chromium endpoint for real-browser checks |
 | Cloudflare Tunnel integration | ⬜ Planned | Expose via cloudflared without open port |
@@ -88,6 +88,8 @@ This document tracks which features are implemented, in progress, or planned.
 | Multi-user support | ✅ Done | Per-user monitors/notifications in isolated SQLite DB files; shared `users.db` for auth + push token routing; `Registry` + `MultiScheduler` for per-user DB and scheduler lifecycle |
 | Import / export monitors | ✅ Done | Export a single monitor's config as JSON (`GET /monitors/:id/export`); import via file upload (`POST /monitors/import`) |
 | User management admin page | ✅ Done | `/admin/users` — list, add, change password, delete users |
+| Account registration | ✅ Done | Open registration (toggleable by admin); startup system token grants admin to first registrant; admin invite links (single-use, no expiry); runtime enable/disable via settings page |
+| Role-based access control | ✅ Done | First account (via startup token) becomes admin; admin-only routes gated by `AdminRequired` middleware; normal users isolated to own data by per-user DB design; admin can promote/demote users |
 
 ---
 

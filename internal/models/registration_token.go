@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -54,7 +55,8 @@ func (s *RegistrationTokenStore) Generate(createdBy string, ttl time.Duration) (
 		expiresAt = &t
 	}
 
-	_, err := s.db.Exec(
+	_, err := s.db.ExecContext(
+		context.Background(),
 		`INSERT INTO registration_tokens (token, created_by, expires_at) VALUES (?, ?, ?)`,
 		token, createdBy, expiresAt,
 	)
@@ -70,7 +72,8 @@ func (s *RegistrationTokenStore) GetPending(token string) (*RegistrationToken, e
 	rt := &RegistrationToken{}
 	var usedAt sql.NullTime
 	var expiresAt sql.NullTime
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(
+		context.Background(),
 		`SELECT token, created_by, used_at, expires_at, created_at
 		 FROM registration_tokens WHERE token = ?`,
 		token,
@@ -94,7 +97,8 @@ func (s *RegistrationTokenStore) GetPending(token string) (*RegistrationToken, e
 // that creates the new user account to keep the two operations atomic; here we
 // use a simple sequential approach (tokens are single-use by design).
 func (s *RegistrationTokenStore) Consume(token string) error {
-	res, err := s.db.Exec(
+	res, err := s.db.ExecContext(
+		context.Background(),
 		`UPDATE registration_tokens SET used_at = ? WHERE token = ? AND used_at IS NULL`,
 		time.Now().UTC(), token,
 	)
@@ -110,7 +114,8 @@ func (s *RegistrationTokenStore) Consume(token string) error {
 
 // ListAll returns every token ordered newest-first.
 func (s *RegistrationTokenStore) ListAll() ([]*RegistrationToken, error) {
-	rows, err := s.db.Query(
+	rows, err := s.db.QueryContext(
+		context.Background(),
 		`SELECT token, created_by, used_at, expires_at, created_at
 		 FROM registration_tokens ORDER BY created_at DESC`,
 	)
@@ -140,6 +145,6 @@ func (s *RegistrationTokenStore) ListAll() ([]*RegistrationToken, error) {
 
 // Delete removes a token. Any admin can revoke any token.
 func (s *RegistrationTokenStore) Delete(token string) error {
-	_, err := s.db.Exec(`DELETE FROM registration_tokens WHERE token = ?`, token)
+	_, err := s.db.ExecContext(context.Background(), `DELETE FROM registration_tokens WHERE token = ?`, token)
 	return err
 }
