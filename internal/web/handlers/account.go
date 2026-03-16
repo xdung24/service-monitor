@@ -106,6 +106,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 			if qrImg, imgErr := key.Image(200, 200); imgErr == nil {
 				var buf bytes.Buffer
 				if pngErr := png.Encode(&buf, qrImg); pngErr == nil {
+					// #nosec G203 -- data URI is entirely server-generated base64 PNG; no user input is interpolated.
 					qrDataURI = template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()))
 				}
 			}
