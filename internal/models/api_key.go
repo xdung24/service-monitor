@@ -50,7 +50,7 @@ func HashAPIToken(token string) string {
 
 // List returns all API keys for the given user.
 func (s *APIKeyStore) List(username string) ([]*APIKey, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, username, name, token_hash, created_at, last_used_at
 		FROM api_keys WHERE username=? ORDER BY id ASC
 	`, username)
@@ -95,7 +95,7 @@ func (s *APIKeyStore) Verify(plainToken string) (string, error) {
 	hash := HashAPIToken(plainToken)
 	var id int64
 	var username string
-	err := s.db.QueryRow(`SELECT id, username FROM api_keys WHERE token_hash=?`, hash).
+	err := s.db.QueryRowContext(context.Background(), `SELECT id, username FROM api_keys WHERE token_hash=?`, hash).
 		Scan(&id, &username)
 	if err == sql.ErrNoRows {
 		return "", fmt.Errorf("invalid api key")

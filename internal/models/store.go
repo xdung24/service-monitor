@@ -19,7 +19,7 @@ func NewMonitorStore(db *sql.DB) *MonitorStore {
 
 // List returns all monitors with their latest heartbeat status.
 func (s *MonitorStore) List() ([]*Monitor, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
 		       dns_server, dns_record_type, dns_expected,
 		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
@@ -65,7 +65,7 @@ func (s *MonitorStore) List() ([]*Monitor, error) {
 // Get returns a single monitor by ID.
 func (s *MonitorStore) Get(id int64) (*Monitor, error) {
 	m := &Monitor{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
 		       dns_server, dns_record_type, dns_expected,
 		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
@@ -196,7 +196,7 @@ func (s *HeartbeatStore) Insert(h *Heartbeat) error {
 
 // Latest returns the most recent N heartbeats for a monitor.
 func (s *HeartbeatStore) Latest(monitorID int64, limit int) ([]*Heartbeat, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, monitor_id, status, latency_ms, message, created_at
 		FROM heartbeats WHERE monitor_id = ?
 		ORDER BY created_at DESC LIMIT ?
@@ -220,7 +220,7 @@ func (s *HeartbeatStore) Latest(monitorID int64, limit int) ([]*Heartbeat, error
 // UptimePercent returns uptime % for a monitor over the given duration.
 func (s *HeartbeatStore) UptimePercent(monitorID int64, since time.Time) (float64, error) {
 	var total, up int
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*), SUM(CASE WHEN status=1 THEN 1 ELSE 0 END)
 		FROM heartbeats WHERE monitor_id=? AND created_at >= ?
 	`, monitorID, since).Scan(&total, &up)
@@ -233,7 +233,7 @@ func (s *HeartbeatStore) UptimePercent(monitorID int64, since time.Time) (float6
 // LatencyHistory returns the last `limit` latency values for a monitor, oldest first.
 // Only UP beats (status=1) are included so DOWN spikes don't distort the sparkline scale.
 func (s *HeartbeatStore) LatencyHistory(monitorID int64, limit int) ([]int, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT latency_ms FROM heartbeats
 		WHERE monitor_id = ?
 		ORDER BY created_at DESC LIMIT ?
@@ -271,14 +271,14 @@ func NewUserStore(db *sql.DB) *UserStore {
 // Count returns number of users.
 func (s *UserStore) Count() (int, error) {
 	var count int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	err := s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM users`).Scan(&count)
 	return count, err
 }
 
 // GetByUsername returns a user by username.
 func (s *UserStore) GetByUsername(username string) (*User, error) {
 	u := &User{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, username, password, created_at, is_admin FROM users WHERE username=?
 	`, username).Scan(&u.ID, &u.Username, &u.Password, &u.CreatedAt, &u.IsAdmin)
 	if err == sql.ErrNoRows {
@@ -312,7 +312,7 @@ func (s *UserStore) SetAdmin(username string, admin bool) error {
 
 // ListAll returns all user records from the users database.
 func (s *UserStore) ListAll() ([]*User, error) {
-	rows, err := s.db.Query(`SELECT id, username, password, created_at, is_admin FROM users ORDER BY id ASC`)
+	rows, err := s.db.QueryContext(context.Background(), `SELECT id, username, password, created_at, is_admin FROM users ORDER BY id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func (s *UserStore) UnregisterPushToken(token string) error {
 // Returns sql.ErrNoRows (wrapped) if the token is not registered.
 func (s *UserStore) LookupPushToken(token string) (string, error) {
 	var username string
-	err := s.db.QueryRow(`SELECT username FROM push_tokens WHERE token=?`, token).Scan(&username)
+	err := s.db.QueryRowContext(context.Background(), `SELECT username FROM push_tokens WHERE token=?`, token).Scan(&username)
 	if err != nil {
 		return "", err
 	}
@@ -379,7 +379,7 @@ func (s *UserStore) UpdatePassword(username, hashedPassword string) error {
 func (s *UserStore) GetTOTP(username string) (secret string, enabled bool, err error) {
 	var sec sql.NullString
 	var ena sql.NullInt64
-	err = s.db.QueryRow(
+	err = s.db.QueryRowContext(context.Background(), 
 		`SELECT totp_secret, totp_enabled FROM users WHERE username=?`, username,
 	).Scan(&sec, &ena)
 	if err != nil {
@@ -436,7 +436,7 @@ func (s *MonitorStore) UpdateLastNotifiedStatus(id int64, status int) error {
 // Both values are nil-able (NULL before first check / first notification).
 func (s *MonitorStore) GetLastStatuses(id int64) (lastStatus, lastNotified *int, err error) {
 	var ls, ln sql.NullInt64
-	err = s.db.QueryRow(
+	err = s.db.QueryRowContext(context.Background(), 
 		`SELECT last_status, last_notified_status FROM monitors WHERE id=?`, id,
 	).Scan(&ls, &ln)
 	if err != nil {
@@ -456,7 +456,7 @@ func (s *MonitorStore) GetLastStatuses(id int64) (lastStatus, lastNotified *int,
 // GetByPushToken returns the monitor with the given push token, or nil if not found.
 func (s *MonitorStore) GetByPushToken(token string) (*Monitor, error) {
 	m := &Monitor{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, name, type, url, interval_seconds, timeout_seconds, active, retries,
 		       dns_server, dns_record_type, dns_expected,
 		       http_accepted_statuses, http_ignore_tls, http_method, http_keyword, http_keyword_invert,
@@ -505,7 +505,7 @@ func NewNotificationStore(db *sql.DB) *NotificationStore {
 
 // List returns all notification providers.
 func (s *NotificationStore) List() ([]*Notification, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, name, type, config, active, created_at FROM notifications ORDER BY id ASC
 	`)
 	if err != nil {
@@ -527,7 +527,7 @@ func (s *NotificationStore) List() ([]*Notification, error) {
 // Get returns a single notification provider by ID.
 func (s *NotificationStore) Get(id int64) (*Notification, error) {
 	n := &Notification{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, name, type, config, active, created_at FROM notifications WHERE id=?
 	`, id).Scan(&n.ID, &n.Name, &n.Type, &n.Config, &n.Active, &n.CreatedAt)
 	if err == sql.ErrNoRows {
@@ -563,7 +563,7 @@ func (s *NotificationStore) Delete(id int64) error {
 
 // ListForMonitor returns all active notification providers linked to a monitor.
 func (s *NotificationStore) ListForMonitor(monitorID int64) ([]*Notification, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT n.id, n.name, n.type, n.config, n.active, n.created_at
 		FROM notifications n
 		JOIN monitor_notifications mn ON mn.notification_id = n.id
@@ -653,7 +653,7 @@ func (s *NotificationLogStore) List(limit int) ([]*NotificationLog, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, monitor_id, notification_id, monitor_name, notification_name,
 		       event_status, success, error, created_at
 		FROM notification_logs
@@ -682,7 +682,7 @@ func (s *NotificationLogStore) ListForMonitor(monitorID int64, limit int) ([]*No
 	if limit <= 0 {
 		limit = 50
 	}
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, monitor_id, notification_id, monitor_name, notification_name,
 		       event_status, success, error, created_at
 		FROM notification_logs

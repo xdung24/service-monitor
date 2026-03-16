@@ -157,9 +157,7 @@ type jsonPathStep struct {
 
 // tokenizeJsonPath splits a JSONPath expression (after the leading $) into steps.
 func tokenizeJsonPath(expr string) ([]jsonPathStep, error) {
-	if strings.HasPrefix(expr, ".") {
-		expr = expr[1:]
-	}
+	expr = strings.TrimPrefix(expr, ".")
 	var steps []jsonPathStep
 	for expr != "" {
 		if expr[0] == '[' {
@@ -174,9 +172,7 @@ func tokenizeJsonPath(expr string) ([]jsonPathStep, error) {
 			}
 			steps = append(steps, jsonPathStep{index: idx, isIdx: true})
 			expr = expr[end+1:]
-			if strings.HasPrefix(expr, ".") {
-				expr = expr[1:]
-			}
+			expr = strings.TrimPrefix(expr, ".")
 			continue
 		}
 		// Locate key boundary (next '.' or '[' or end-of-string).
@@ -193,9 +189,7 @@ func tokenizeJsonPath(expr string) ([]jsonPathStep, error) {
 		}
 		steps = append(steps, jsonPathStep{key: key})
 		expr = expr[end:]
-		if strings.HasPrefix(expr, ".") {
-			expr = expr[1:]
-		}
+		expr = strings.TrimPrefix(expr, ".")
 	}
 	return steps, nil
 }

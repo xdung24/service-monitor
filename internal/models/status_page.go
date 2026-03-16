@@ -34,7 +34,7 @@ func NewStatusPageStore(db *sql.DB) *StatusPageStore {
 
 // List returns all status pages ordered by name.
 func (s *StatusPageStore) List() ([]*StatusPage, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, name, slug, description, created_at, updated_at
 		FROM status_pages ORDER BY name ASC
 	`)
@@ -57,7 +57,7 @@ func (s *StatusPageStore) List() ([]*StatusPage, error) {
 // Get returns a single status page by ID.
 func (s *StatusPageStore) Get(id int64) (*StatusPage, error) {
 	p := &StatusPage{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, name, slug, description, created_at, updated_at
 		FROM status_pages WHERE id = ?
 	`, id).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.CreatedAt, &p.UpdatedAt)
@@ -70,7 +70,7 @@ func (s *StatusPageStore) Get(id int64) (*StatusPage, error) {
 // GetBySlug returns a status page by its URL slug.
 func (s *StatusPageStore) GetBySlug(slug string) (*StatusPage, error) {
 	p := &StatusPage{}
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, name, slug, description, created_at, updated_at
 		FROM status_pages WHERE slug = ?
 	`, slug).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.CreatedAt, &p.UpdatedAt)
@@ -115,11 +115,11 @@ func (s *StatusPageStore) SetMonitors(pageID int64, monitorIDs []int64) error {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(`DELETE FROM status_page_monitors WHERE page_id = ?`, pageID); err != nil {
+	if _, err := tx.ExecContext(context.Background(), `DELETE FROM status_page_monitors WHERE page_id = ?`, pageID); err != nil {
 		return err
 	}
 	for pos, mid := range monitorIDs {
-		if _, err := tx.Exec(
+		if _, err := tx.ExecContext(context.Background(), 
 			`INSERT OR IGNORE INTO status_page_monitors (page_id, monitor_id, position) VALUES (?, ?, ?)`,
 			pageID, mid, pos,
 		); err != nil {
@@ -131,7 +131,7 @@ func (s *StatusPageStore) SetMonitors(pageID int64, monitorIDs []int64) error {
 
 // ListMonitorIDs returns monitor IDs linked to a status page, ordered by position.
 func (s *StatusPageStore) ListMonitorIDs(pageID int64) ([]int64, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT monitor_id FROM status_page_monitors
 		WHERE page_id = ? ORDER BY position ASC
 	`, pageID)

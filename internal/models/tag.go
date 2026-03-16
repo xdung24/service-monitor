@@ -107,11 +107,11 @@ func (s *TagStore) SetMonitorTags(monitorID int64, tagIDs []int64) error {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(`DELETE FROM monitor_tags WHERE monitor_id = ?`, monitorID); err != nil {
+	if _, err := tx.ExecContext(context.Background(), `DELETE FROM monitor_tags WHERE monitor_id = ?`, monitorID); err != nil {
 		return err
 	}
 	for _, tid := range tagIDs {
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO monitor_tags (monitor_id, tag_id) VALUES (?, ?)`, monitorID, tid); err != nil {
+		if _, err := tx.ExecContext(context.Background(), `INSERT OR IGNORE INTO monitor_tags (monitor_id, tag_id) VALUES (?, ?)`, monitorID, tid); err != nil {
 			return err
 		}
 	}

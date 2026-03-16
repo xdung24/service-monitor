@@ -1,6 +1,6 @@
 module github.com/xdung24/service-monitor
 
-go 1.25.5
+go 1.25.0
 
 require (
 	github.com/antchfx/xmlquery v1.5.0
@@ -8,6 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/lib/pq v1.11.2
+	github.com/pquerna/otp v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.5.0
 	golang.org/x/crypto v0.48.0
 	modernc.org/sqlite v1.46.1
@@ -40,7 +41,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

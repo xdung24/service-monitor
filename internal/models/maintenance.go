@@ -113,11 +113,11 @@ func (s *MaintenanceStore) SetMonitors(windowID int64, monitorIDs []int64) error
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(`DELETE FROM monitor_maintenance WHERE window_id = ?`, windowID); err != nil {
+	if _, err := tx.ExecContext(context.Background(), `DELETE FROM monitor_maintenance WHERE window_id = ?`, windowID); err != nil {
 		return err
 	}
 	for _, mid := range monitorIDs {
-		if _, err := tx.Exec(
+		if _, err := tx.ExecContext(context.Background(), 
 			`INSERT OR IGNORE INTO monitor_maintenance (window_id, monitor_id) VALUES (?, ?)`,
 			windowID, mid,
 		); err != nil {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -19,13 +20,13 @@ func NewAppSettingsStore(db *sql.DB) *AppSettingsStore {
 // get returns the raw string value for key, or "" when the key is absent.
 func (s *AppSettingsStore) get(key string) string {
 	var v string
-	_ = s.db.QueryRow(`SELECT value FROM app_settings WHERE key = ?`, key).Scan(&v)
+	_ = s.db.QueryRowContext(context.Background(), `SELECT value FROM app_settings WHERE key = ?`, key).Scan(&v)
 	return v
 }
 
 // set upserts a key-value pair.
 func (s *AppSettingsStore) set(key, value string) error {
-	_, err := s.db.Exec(
+	_, err := s.db.ExecContext(context.Background(),
 		`INSERT INTO app_settings (key, value) VALUES (?, ?)
 		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
 		key, value,
