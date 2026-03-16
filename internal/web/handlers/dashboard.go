@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -14,6 +15,12 @@ import (
 	"github.com/xdung24/service-monitor/internal/scheduler"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// sparklineTmpl is parsed once at package init; html/template auto-escapes all dynamic values.
+var sparklineTmpl = template.Must(template.New("sparkline").Parse(
+	`<svg width="{{.W}}" height="{{.H}}" viewBox="0 0 {{.W}} {{.H}}" xmlns="http://www.w3.org/2000/svg" style="display:block;">` +
+		`<polyline points="{{.Pts}}" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
+))
 
 const sessionCookieName = "sm_session"
 
@@ -291,9 +298,12 @@ func computeSparklineSVG(beats []*models.Heartbeat) template.HTML {
 		}
 	}
 
-	svg := fmt.Sprintf(
-		`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" style="display:block;"><polyline points="%s" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
-		svgW, svgH, svgW, svgH, pts,
-	)
-	return template.HTML(svg)
+	var buf bytes.Buffer
+	if err := sparklineTmpl.Execute(&buf, struct {
+		W, H int
+		Pts  string
+	}{svgW, svgH, pts}); err != nil {
+		return ""
+	}
+	return template.HTML(buf.String()) //nolint:gosec // content produced by html/template; all dynamic values are numeric
 }

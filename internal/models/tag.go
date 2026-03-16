@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"database/sql"
-	"time"
 )
 
 // Tag is a color-coded label that can be applied to multiple monitors.
@@ -25,7 +24,7 @@ func NewTagStore(db *sql.DB) *TagStore {
 
 // List returns all tags ordered by name.
 func (s *TagStore) List() ([]*Tag, error) {
-	rows, err := s.db.Query(`SELECT id, name, color FROM tags ORDER BY name ASC`)
+	rows, err := s.db.QueryContext(context.Background(), `SELECT id, name, color FROM tags ORDER BY name ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (s *TagStore) List() ([]*Tag, error) {
 // Get returns a single tag by ID.
 func (s *TagStore) Get(id int64) (*Tag, error) {
 	t := &Tag{}
-	err := s.db.QueryRow(`SELECT id, name, color FROM tags WHERE id = ?`, id).
+	err := s.db.QueryRowContext(context.Background(), `SELECT id, name, color FROM tags WHERE id = ?`, id).
 		Scan(&t.ID, &t.Name, &t.Color)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -78,7 +77,7 @@ func (s *TagStore) Delete(id int64) error {
 
 // ListForMonitor returns all tags assigned to a specific monitor.
 func (s *TagStore) ListForMonitor(monitorID int64) ([]*Tag, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT t.id, t.name, t.color FROM tags t
 		JOIN monitor_tags mt ON mt.tag_id = t.id
 		WHERE mt.monitor_id = ?
@@ -121,7 +120,7 @@ func (s *TagStore) SetMonitorTags(monitorID int64, tagIDs []int64) error {
 
 // ListByTag returns all monitor IDs that have a specific tag.
 func (s *TagStore) ListMonitorIDsByTag(tagID int64) ([]int64, error) {
-	rows, err := s.db.Query(`SELECT monitor_id FROM monitor_tags WHERE tag_id = ?`, tagID)
+	rows, err := s.db.QueryContext(context.Background(), `SELECT monitor_id FROM monitor_tags WHERE tag_id = ?`, tagID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,9 +163,6 @@ func (s *TagStore) TagMapForMonitors(monitorIDs []int64) (map[int64][]*Tag, erro
 // TagsUpdatedAt returns the last update timestamp across all tags (for cache busting).
 func (s *TagStore) Count() (int, error) {
 	var n int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM tags`).Scan(&n)
+	err := s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tags`).Scan(&n)
 	return n, err
 }
-
-// Computed helper: returns the current time.
-func now() time.Time { return time.Now().UTC() }

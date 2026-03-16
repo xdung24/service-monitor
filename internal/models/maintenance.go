@@ -40,7 +40,7 @@ func (s *MaintenanceStore) scan(rows *sql.Rows) (*MaintenanceWindow, error) {
 
 // List returns all maintenance windows ordered by start_time.
 func (s *MaintenanceStore) List() ([]*MaintenanceWindow, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, name, start_time, end_time, active, created_at, updated_at
 		FROM maintenance_windows ORDER BY start_time ASC
 	`)
@@ -62,7 +62,7 @@ func (s *MaintenanceStore) List() ([]*MaintenanceWindow, error) {
 
 // Get returns a single maintenance window by ID.
 func (s *MaintenanceStore) Get(id int64) (*MaintenanceWindow, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, name, start_time, end_time, active, created_at, updated_at
 		FROM maintenance_windows WHERE id = ?
 	`, id)
@@ -129,7 +129,7 @@ func (s *MaintenanceStore) SetMonitors(windowID int64, monitorIDs []int64) error
 
 // ListMonitorIDs returns all monitor IDs linked to a window.
 func (s *MaintenanceStore) ListMonitorIDs(windowID int64) ([]int64, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT monitor_id FROM monitor_maintenance WHERE window_id = ?
 	`, windowID)
 	if err != nil {
@@ -152,7 +152,7 @@ func (s *MaintenanceStore) ListMonitorIDs(windowID int64) ([]int64, error) {
 // maintenance window at time `t`.
 func (s *MaintenanceStore) IsInMaintenance(monitorID int64, t time.Time) (bool, error) {
 	var count int
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*) FROM maintenance_windows mw
 		JOIN monitor_maintenance mm ON mm.window_id = mw.id
 		WHERE mm.monitor_id = ?
