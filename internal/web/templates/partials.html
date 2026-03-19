@@ -103,6 +103,29 @@
     .stat-neutral { color: #60a5fa; }
 
     .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+
+    /* Navbar dropdown */
+    .nav-dropdown { position: relative; display: inline-flex; align-items: center; }
+    .nav-dropdown-toggle {
+        color: #94a3b8; font-size: 0.875rem; cursor: pointer;
+        background: none; border: none; padding: 0;
+    }
+    .nav-dropdown-menu {
+        display: none; position: absolute; top: 100%; right: 0;
+        background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem;
+        min-width: 160px; z-index: 200; padding: 0.35rem 0;
+    }
+    .nav-dropdown-menu.open { display: block; }
+    .nav-dropdown-menu a {
+        display: block; padding: 0.5rem 1rem;
+        color: #94a3b8; font-size: 0.875rem;
+    }
+    .nav-dropdown-menu a:hover { background: #334155; text-decoration: none; }
+    .nav-dropdown-divider { border: none; border-top: 1px solid #334155; margin: 0.35rem 0; }
+    [data-theme="light"] .nav-dropdown-menu { background: #ffffff; border-color: #e2e8f0; }
+    [data-theme="light"] .nav-dropdown-menu a { color: #475569; }
+    [data-theme="light"] .nav-dropdown-menu a:hover { background: #f1f5f9; }
+    [data-theme="light"] .nav-dropdown-divider { border-top-color: #e2e8f0; }
 </style>
 <script>
     (function(){
@@ -117,16 +140,9 @@
     <a class="navbar-brand" href="/">&#x2665; <span>Service</span>Monitor</a>
     <div class="navbar-actions" style="display:flex; gap:1.5rem; align-items:center;">
         <a href="/" style="color:#94a3b8; font-size:0.875rem;">Monitors</a>
-        <a href="/notifications" style="color:#94a3b8; font-size:0.875rem;">Notifications</a>
+        <a href="/notifications/logs" style="color:#94a3b8; font-size:0.875rem;">Notifications</a>
         <a href="/status-pages" style="color:#94a3b8; font-size:0.875rem;">Status Pages</a>
-        <a href="/tags" style="color:#94a3b8; font-size:0.875rem;">Tags</a>
         <a href="/maintenance" style="color:#94a3b8; font-size:0.875rem;">Maintenance</a>
-        <a href="/api-keys" style="color:#94a3b8; font-size:0.875rem;">API Keys</a>
-        <a href="/account/2fa" style="color:#94a3b8; font-size:0.875rem;">2FA</a>
-        {{ if .IsAdmin }}
-        <a href="/admin/users" style="color:#94a3b8; font-size:0.875rem;">Users</a>
-        <a href="/admin/settings" style="color:#94a3b8; font-size:0.875rem;">Settings</a>
-        {{ end }}
         <form method="POST" action="/settings/theme" style="display:inline; margin:0;">
             <button type="submit" title="Toggle theme"
                     style="background:none; border:1px solid #334155; border-radius:0.4rem; color:#94a3b8;
@@ -134,7 +150,22 @@
                 &#9788;
             </button>
         </form>
-        <a href="/logout" style="color:#94a3b8; font-size:0.875rem;">Logout</a>
+        <div class="nav-dropdown">
+            <button class="nav-dropdown-toggle" onclick="(function(b){var m=b.nextElementSibling;m.classList.toggle('open');document.addEventListener('click',function h(e){if(!b.closest('.nav-dropdown').contains(e.target)){m.classList.remove('open');document.removeEventListener('click',h);}},{once:false});event.stopPropagation();})(this)">&#128100; {{ .Username }} &#9662;</button>
+            <div class="nav-dropdown-menu">
+                <a href="/notifications">Noti Providers</a>
+                <a href="/tags">Tags</a>
+                <a href="/api-keys">API Keys</a>
+                <a href="/account/2fa">2FA</a>
+                {{ if .IsAdmin }}
+                <hr class="nav-dropdown-divider">
+                <a href="/admin/users">Users</a>
+                <a href="/admin/settings">Admin Settings</a>
+                {{ end }}
+                <hr class="nav-dropdown-divider">
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
     </div>
 </nav>
 {{ end }}

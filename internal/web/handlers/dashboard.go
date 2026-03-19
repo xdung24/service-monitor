@@ -165,11 +165,12 @@ func (h *Handler) isAdmin(c *gin.Context) bool {
 	return c.GetBool(ctxKeyIsAdmin)
 }
 
-// pageData returns a gin.H with common authenticated-page fields (IsAdmin)
+// pageData returns a gin.H with common authenticated-page fields (IsAdmin, Username)
 // merged with any page-specific fields supplied by the caller.
 func (h *Handler) pageData(c *gin.Context, extra gin.H) gin.H {
 	data := gin.H{
-		"IsAdmin": h.isAdmin(c),
+		"IsAdmin":  h.isAdmin(c),
+		"Username": c.GetString(ctxKeyUsername),
 	}
 	for k, v := range extra {
 		data[k] = v
