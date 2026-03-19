@@ -11,13 +11,29 @@
     {{ template "navbar" . }}
     <div class="container">
 
-<h1 class="page-title">{{ if .IsNew }}Add Monitor{{ else }}Edit Monitor{{ end }}</h1>
+<div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+    {{ if .IsNew }}
+    <a href="/" style="color:#64748b;">&#8592; Back</a>
+    {{ else }}
+    <a href="/monitors/{{ .Monitor.ID }}" style="color:#64748b;">&#8592; Back</a>
+    {{ end }}
+    <h1 class="page-title" style="margin-bottom:0;">{{ if .IsNew }}Add Monitor{{ else }}Edit Monitor{{ end }}</h1>
+    {{ if not .IsNew }}
+    <div style="display:flex; gap:0.75rem; margin-left:auto;">
+        <a href="/monitors/{{ .Monitor.ID }}/export" class="btn btn-ghost" title="Download config as JSON">&#8595; Export</a>
+        <form method="POST" action="/monitors/{{ .Monitor.ID }}/delete"
+              onsubmit="return confirm('Delete {{ .Monitor.Name | js }}?')" style="display:inline;">
+            <button class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+    {{ end }}
+</div>
 
 {{ if .Error }}
 <div class="alert alert-danger">{{ .Error }}</div>
 {{ end }}
 
-<div class="card" style="max-width:600px;">
+<div class="card">
     <form method="POST" action="{{ if .IsNew }}/monitors{{ else }}/monitors/{{ .Monitor.ID }}{{ end }}">
         <div class="form-group">
             <label for="name">Display Name</label>

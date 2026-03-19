@@ -43,9 +43,16 @@ internal/
     router_test.go       Single TestTemplatesParse test (parses all templates)
     handlers/
       dashboard.go       Auth middleware, setup/login/logout, dashboard, per-request context helpers
-      monitors.go        Monitor CRUD handlers
+      monitors.go        Monitor CRUD handlers + import/export
       notifications.go   Notification provider CRUD + test + log handlers
       users.go           User management handlers (list, create, change-password, delete)
+      account.go         2FA (TOTP) setup/disable for the current user
+      api_keys.go        API key list/create/delete (stored in users.db)
+      maintenance.go     Maintenance window CRUD handlers
+      register.go        Public self-registration + invite-token flow; also settingsStore helper
+      settings.go        Theme toggle + admin settings page (registration enable/disable)
+      status_pages.go    Status page CRUD + public read-only view
+      tags.go            Tag CRUD handlers
       auth_token.go      HMAC token sign/verify
     templates/           HTML templates (SSR, dark theme)
       partials.html      Shared CSS (styles) and navbar defines
@@ -57,8 +64,19 @@ internal/
       notification_log.html   Notification send history
       users.html         User management list page
       user_form.html     Create user / change password form
+      account_2fa.html   2FA status + TOTP setup QR code page
+      admin_settings.html Admin settings page (registration enable/disable)
+      api_keys.html      API key list/create/delete page
       login.html         Login page
+      login_2fa.html     TOTP second-factor prompt
+      maintenance_form.html  Create/edit maintenance window form
+      maintenance_list.html  Maintenance windows list
+      register.html      Public self-registration / invite-token page
       setup.html         First-run setup wizard
+      status_page_form.html  Create/edit status page form
+      status_page_list.html  Status pages management list
+      status_page_public.html Public read-only status page at /status/:username/:slug
+      tags.html          Tag management page (list + inline create form)
       error.html         Error page
 Dockerfile               Multi-stage, non-root, alpine-based
 compose.yaml             Docker Compose
@@ -77,7 +95,7 @@ The app uses **two tiers of SQLite databases** to eliminate write-lock contentio
 
 ### Per-user data database (`DATA_DIR/users/<username>/data.db`)
 - Migration source: `internal/database/migrations_user/`
-- Tables: `monitors`, `heartbeats`, `notifications`, `monitor_notifications`, `notification_logs`
+- Tables: `monitors`, `heartbeats`, `notifications`, `monitor_notifications`, `notification_logs`, `tags`, `monitor_tags`, `maintenance_windows`, `maintenance_monitors`, `status_pages`, `status_page_monitors`, `docker_hosts`
 - Opened lazily on first request via `database.Registry.Get(username)`.
 - Each user gets exactly one writer connection (`SetMaxOpenConns(1)`).
 
@@ -98,7 +116,9 @@ After validating the session cookie it calls `registry.Get(username)` and inject
 - `"sm_username"` → `string`
 
 All protected handlers access stores via context helpers defined on `Handler`:
-- `h.monitorStore(c)`, `h.heartbeatStore(c)`, `h.notifStore(c)`, `h.notifLogStore(c)`, `h.schedFor(c)`
+- `h.monitorStore(c)`, `h.heartbeatStore(c)`, `h.notifStore(c)`, `h.notifLogStore(c)`, `h.schedFor(c)` — per-user stores that require a Gin context
+- `h.tagStore(c)`, `h.maintenanceStore(c)`, `h.statusPageStore(c)` — per-user stores for tags, maintenance windows, and status pages
+- `h.apiKeyStore()`, `h.settingsStore()`, `h.regTokenStore()` — shared-DB stores (no context arg; read from `h.usersDB` directly)
 
 ## Key Conventions
 
@@ -112,6 +132,96 @@ All protected handlers access stores via context helpers defined on `Handler`:
 - **SQL migrations**: filename format `NNNN_description.up.sql` / `NNNN_description.down.sql`; embedded via `//go:embed` in `database.go`
 - **Never edit existing migration files** — always add a new numbered migration
 - **Database context (noctx)**: never call `(*sql.DB).Exec`, `(*sql.DB).Query`, or `(*sql.DB).QueryRow` directly — always use the `Context` variants (`ExecContext`, `QueryContext`, `QueryRowContext`) passing `context.Background()` at minimum
+
+## Web UI Conventions
+
+### Template data contract
+Every protected page is rendered via `c.HTML(status, "page.html", h.pageData(c, gin.H{...}))`.
+
+`pageData()` merges the caller-supplied map with exactly **one** common key:
+- `IsAdmin bool` — `true` when the logged-in user has the admin role.
+
+There is **no** `Username` or `Theme` key in the template data.  The theme is read from the
+`sm_theme` cookie by a tiny inline `<script>` inside `{{ define "styles" }}` in `partials.html`,
+which sets `data-theme` on `<html>`.  Usernames are stored only in the Gin context (key
+`"sm_username"`), not passed to templates.
+
+Before editing a template, **always read the corresponding handler** in
+`internal/web/handlers/` to confirm the exact keys it puts in `gin.H{}`.
+
+Common keys used by individual pages (set by the handler, not by `pageData`):
+
+| Template | Extra keys |
+|---|---|
+| `monitor_form.html` | `Monitor *models.Monitor`, `IsNew bool`, `Error string`, `AllNotifs`, `LinkedNotifIDs`, `NotifSummaries`, `AllTags`, `LinkedTagIDs` |
+| `notification_form.html` | `Notif *models.Notification`, `IsNew bool`, `Error string` |
+| `dashboard.html` | `Monitors []models.Monitor`, `Stats` |
+| `users.html` | `Users []models.User`, `CurrentUser string` |
+| `account_2fa.html` | `Enabled bool`, `Flash string`, `Error string`; optionally `SetupMode bool`, `QRDataURI template.URL`, `TOTPSecret string` |
+| `admin_settings.html` | `Flash string`, `Error string`, `RegistrationEnabled bool` |
+| `api_keys.html` | `Keys []models.APIKey`, `Flash string`; optionally `NewToken string` (shown once after creation) |
+| `maintenance_form.html` | `Window *models.MaintenanceWindow`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
+| `maintenance_list.html` | `Windows []models.MaintenanceWindow`, `Flash string` |
+| `register.html` | `Token string`, `Disabled bool`, `Error string` |
+| `status_page_form.html` | `Page *models.StatusPage`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
+| `status_page_list.html` | `Pages []models.StatusPage`, `Flash string` |
+| `tags.html` | `Tags []*models.Tag`, `Flash string`; optionally `NewForm bool`, `Tag *models.Tag`, `Error string` |
+
+### Dual-theme CSS
+The dark theme is the base.  Every new CSS rule that is colour- or background-sensitive
+**must** have a `[data-theme="light"]` override added in the same `{{ define "styles" }}`
+block (in `partials.html` for shared classes, or in the page template for page-specific ones).
+
+```css
+/* dark (base) */
+.my-class { background: #1e293b; color: #e2e8f0; }
+/* light override — required for every colour/background rule */
+[data-theme="light"] .my-class { background: #ffffff; color: #0f172a; }
+```
+
+### Monitor-type field show/hide pattern
+Fields specific to one monitor type live in a `<div id="TYPE-fields" ...>` with an inline
+`style` that sets the initial visibility from the template data:
+
+```html
+<div id="foo-fields" style="display:{{ if eq .Monitor.Type "foo" }}block{{ else }}none{{ end }};">
+    <!-- foo-specific fields -->
+</div>
+```
+
+After adding the div, add a corresponding line to `toggleTypeFields()` at the bottom of
+`monitor_form.html`:
+
+```js
+document.getElementById('foo-fields').style.display = (t === 'foo') ? 'block' : 'none';
+```
+
+If the new type has no URL/address field, also add it to the `noURL` list in the same
+function so the shared URL input is hidden.
+
+### Notification-provider field show/hide pattern
+Same idea, but in `notification_form.html` using `showFields(type)`.  Each provider's
+fields are in a `<div id="fields-PROVIDER">` and toggled by adding a `case` to the switch
+inside `showFields()`.
+
+### Template validation
+After any template change run:
+
+```bash
+go test ./internal/web/...
+```
+
+`TestTemplatesParse` in `internal/web/router_test.go` parses every template and will fail
+immediately on syntax errors.  The server itself also panics during startup when a template
+fails to parse, so issues are caught before serving any request.
+
+### General HTML/template rules
+- Always use `html/template` (auto-escaping).  Never use `text/template` for HTML output.
+- Each page template must `{{ define "filename.html" }}` and call
+  `{{ template "styles" . }}` and `{{ template "navbar" . }}`.
+- For user-supplied content embedded in JS strings, use `{{ .Value | js }}`.
+
+---
 
 ## Feature Roadmap
 

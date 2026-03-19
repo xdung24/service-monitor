@@ -14,8 +14,20 @@
 <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
     <a href="/" style="color:#64748b;">&#8592; Back</a>
     <h1 class="page-title" style="margin-bottom:0;">{{ .Monitor.Name }}</h1>
-    <a href="/monitors/{{ .Monitor.ID }}/edit" class="btn btn-ghost">Edit</a>
     <a href="/monitors/{{ .Monitor.ID }}/export" class="btn btn-ghost" title="Download config as JSON">&#8595; Export</a>
+    {{ if .Monitor.Active }}
+    <form method="POST" action="/monitors/{{ .Monitor.ID }}/pause" style="display:inline;">
+        <button class="btn btn-warning">Pause</button>
+    </form>
+    {{ else }}
+    <form method="POST" action="/monitors/{{ .Monitor.ID }}/resume" style="display:inline;">
+        <button class="btn btn-success">Resume</button>
+    </form>
+    {{ end }}
+    <form method="POST" action="/monitors/{{ .Monitor.ID }}/delete"
+          onsubmit="return confirm('Delete {{ .Monitor.Name | js }}?')" style="display:inline;">
+        <button class="btn btn-danger">Delete</button>
+    </form>
 </div>
 
 <div class="stats">
