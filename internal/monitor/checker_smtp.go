@@ -9,7 +9,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // SMTPChecker checks an SMTP server by performing a minimal protocol conversation:

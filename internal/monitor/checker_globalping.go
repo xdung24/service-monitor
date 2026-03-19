@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 const globalpingAPIBase = "https://api.globalping.io/v1"

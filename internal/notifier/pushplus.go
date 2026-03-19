@@ -46,7 +46,7 @@ func (p *PushPlusProvider) Send(ctx context.Context, cfg map[string]string, e Ev
 		return fmt.Errorf("pushplus: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

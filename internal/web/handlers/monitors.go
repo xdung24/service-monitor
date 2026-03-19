@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // MonitorNew renders the new monitor form.
@@ -239,7 +239,7 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 		NotifyBodyChars int    `json:"notify_body_chars,omitempty"`
 	}
 	doc := exportDoc{
-		Schema:               "service-monitor/monitor/v1",
+		Schema:               "conductor/monitor/v1",
 		Name:                 m.Name,
 		Type:                 m.Type,
 		URL:                  m.URL,
@@ -618,7 +618,7 @@ func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	parentIDVal, _ := strconv.ParseInt(c.DefaultPostForm("parent_id", "0"), 10, 64)
 
 	// Kafka Producer monitor
-	kafkaTopic := c.DefaultPostForm("kafka_topic", "service-monitor-healthcheck")
+	kafkaTopic := c.DefaultPostForm("kafka_topic", "conductor-healthcheck")
 
 	m := &models.Monitor{
 		Name:                 name,

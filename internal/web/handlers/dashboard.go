@@ -11,10 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp/totp"
-	"github.com/xdung24/service-monitor/internal/config"
-	"github.com/xdung24/service-monitor/internal/database"
-	"github.com/xdung24/service-monitor/internal/models"
-	"github.com/xdung24/service-monitor/internal/scheduler"
+	"github.com/xdung24/conductor/internal/config"
+	"github.com/xdung24/conductor/internal/database"
+	"github.com/xdung24/conductor/internal/models"
+	"github.com/xdung24/conductor/internal/scheduler"
 	"golang.org/x/crypto/bcrypt"
 )
 

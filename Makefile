@@ -1,7 +1,7 @@
 ifeq ($(OS),Windows_NT)
-    BINARY := service-monitor.exe
+    BINARY := conductor.exe
 else
-    BINARY := service-monitor
+    BINARY := conductor
 endif
 MAIN     := ./cmd/server
 BUILD_FLAGS := -ldflags="-s -w"
@@ -50,12 +50,12 @@ lint:
 .PHONY: clean
 clean:
 	rm -f $(BINARY)
-	rm -rf data/service-monitor.db
+	rm -rf data/conductor.db
 
 ## docker-build: build Docker image
 .PHONY: docker-build
 docker-build:
-	docker build -t service-monitor:latest .
+	docker build -t conductor:latest .
 
 ## docker-run: run via Docker Compose
 .PHONY: docker-run

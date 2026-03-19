@@ -50,7 +50,7 @@ func (p *PagerDutyProvider) Send(ctx context.Context, cfg map[string]string, e E
 				"message":    e.Message,
 			},
 		},
-		"dedup_key": fmt.Sprintf("service-monitor-%d", e.MonitorID),
+		"dedup_key": fmt.Sprintf("conductor-%d", e.MonitorID),
 	}
 
 	body, err := json.Marshal(payload)
@@ -63,7 +63,7 @@ func (p *PagerDutyProvider) Send(ctx context.Context, cfg map[string]string, e E
 		return fmt.Errorf("pagerduty: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

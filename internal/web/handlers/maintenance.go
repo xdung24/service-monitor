@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 func (h *Handler) maintenanceStore(c *gin.Context) *models.MaintenanceStore {

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // TailscaleChecker runs `tailscale ping --c 1 <hostname>` and interprets the

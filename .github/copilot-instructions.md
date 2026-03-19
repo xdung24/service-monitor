@@ -1,12 +1,12 @@
-# Copilot Instructions for service-monitor
+# Copilot Instructions for conductor
 
 ## Repository Overview
 
-**service-monitor** is a self-hosted uptime monitoring tool written entirely in Go.
+**conductor** is a self-hosted uptime monitoring tool written entirely in Go.
 It uses server-side rendered HTML templates (no frontend build step) and SQLite for storage.
 
 - **Language**: Go 1.25+
-- **Module**: `github.com/xdung24/service-monitor`
+- **Module**: `github.com/xdung24/conductor`
 - **HTTP Framework**: Gin (`github.com/gin-gonic/gin`)
 - **Database**: SQLite via `modernc.org/sqlite` (pure Go, no CGO)
 - **Migrations**: `github.com/golang-migrate/migrate/v4` with embedded SQL files
@@ -16,7 +16,7 @@ It uses server-side rendered HTML templates (no frontend build step) and SQLite 
 ## Build & Run Commands
 
 ```bash
-go build -o service-monitor ./cmd/server   # compile
+go build -o conductor ./cmd/server   # compile
 go run ./cmd/server                         # run without building
 go build ./...                              # check all packages compile
 go vet ./...                                # lint
@@ -122,7 +122,7 @@ All protected handlers access stores via context helpers defined on `Handler`:
 
 ## Key Conventions
 
-- **Module path**: always `github.com/xdung24/service-monitor`
+- **Module path**: always `github.com/xdung24/conductor`
 - **Indentation**: tabs (Go standard)
 - **Naming**: Go idiomatic — camelCase for Go, snake_case for SQL columns
 - **Error handling**: always wrap errors with `fmt.Errorf("context: %w", err)`

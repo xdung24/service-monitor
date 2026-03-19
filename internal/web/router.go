@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xdung24/service-monitor/internal/config"
-	"github.com/xdung24/service-monitor/internal/database"
-	"github.com/xdung24/service-monitor/internal/scheduler"
-	"github.com/xdung24/service-monitor/internal/web/handlers"
+	"github.com/xdung24/conductor/internal/config"
+	"github.com/xdung24/conductor/internal/database"
+	"github.com/xdung24/conductor/internal/scheduler"
+	"github.com/xdung24/conductor/internal/web/handlers"
 )
 
 func templateFuncMap() template.FuncMap {

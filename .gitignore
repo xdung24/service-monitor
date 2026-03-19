@@ -1,6 +1,6 @@
 # Binaries
-service-monitor
-service-monitor.exe
+conductor
+conductor.exe
 
 # Data
 data/

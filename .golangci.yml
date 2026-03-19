@@ -1,4 +1,4 @@
-# .golangci.yml — golangci-lint v2 configuration for service-monitor
+# .golangci.yml — golangci-lint v2 configuration for conductor
 version: "2"
 
 run:

@@ -58,7 +58,7 @@ func (p *ElksProvider) Send(ctx context.Context, cfg map[string]string, e Event)
 		return fmt.Errorf("46elks: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 	req.SetBasicAuth(username, password)
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -118,7 +118,7 @@ func (p *BrevoProvider) Send(ctx context.Context, cfg map[string]string, e Event
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("api-key", apiKey)
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -176,7 +176,7 @@ func (p *CallMeBotProvider) Send(ctx context.Context, cfg map[string]string, e E
 	if err != nil {
 		return fmt.Errorf("callmebot: create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -232,7 +232,7 @@ func (p *CellsyntProvider) Send(ctx context.Context, cfg map[string]string, e Ev
 	if err != nil {
 		return fmt.Errorf("cellsynt: create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -275,7 +275,7 @@ func (p *FreeMobileProvider) Send(ctx context.Context, cfg map[string]string, e 
 	if err != nil {
 		return fmt.Errorf("freemobile: create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -332,7 +332,7 @@ func (p *GTXMessagingProvider) Send(ctx context.Context, cfg map[string]string, 
 		return fmt.Errorf("gtxmessaging: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 	req.SetBasicAuth(username, password)
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -403,7 +403,7 @@ func (p *OctopushProvider) Send(ctx context.Context, cfg map[string]string, e Ev
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("api-key", apiKey)
 	req.Header.Set("api-login", apiLogin)
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // Result holds the outcome of a single check.
@@ -179,7 +179,7 @@ func (c *HTTPChecker) Check(ctx context.Context, m *models.Monitor) Result {
 	if err != nil {
 		return Result{Status: 0, Message: fmt.Sprintf("invalid request: %v", err)}
 	}
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	// Apply custom request headers (Key: Value, one per line).
 	for _, line := range strings.Split(m.HTTPRequestHeaders, "\n") {

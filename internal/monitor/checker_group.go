@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // GroupChildrenStatusLookup is an optional callback that returns the last_status

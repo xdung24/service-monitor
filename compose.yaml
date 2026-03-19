@@ -1,5 +1,5 @@
 services:
-  service-monitor:
+  conductor:
     build: .
     ports:
       - "3001:3001"
@@ -7,6 +7,6 @@ services:
       - ./data:/app/data
     environment:
       - LISTEN_ADDR=:3001
-      - DB_PATH=/app/data/service-monitor.db
+      - DB_PATH=/app/data/conductor.db
       - SECRET_KEY=change-me-in-production
     restart: unless-stopped

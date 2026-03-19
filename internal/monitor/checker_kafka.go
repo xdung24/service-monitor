@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // KafkaChecker produces a single test message to the configured Kafka topic.
@@ -27,7 +27,7 @@ func (c *KafkaChecker) Check(ctx context.Context, m *models.Monitor) Result {
 
 	topic := strings.TrimSpace(m.KafkaTopic)
 	if topic == "" {
-		topic = "service-monitor-healthcheck"
+		topic = "conductor-healthcheck"
 	}
 
 	timeout := time.Duration(m.TimeoutSeconds) * time.Second
@@ -49,7 +49,7 @@ func (c *KafkaChecker) Check(ctx context.Context, m *models.Monitor) Result {
 	defer w.Close() //nolint:errcheck
 
 	err := w.WriteMessages(writeCtx, kafka.Message{
-		Key:   []byte("service-monitor"),
+		Key:   []byte("conductor"),
 		Value: []byte(fmt.Sprintf(`{"check":"healthcheck","time":%d}`, time.Now().Unix())),
 	})
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // ---------------------------------------------------------------------------

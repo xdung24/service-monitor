@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // SIPOptionsChecker sends a raw SIP OPTIONS request over UDP and checks for a
@@ -64,13 +64,13 @@ func (c *SIPOptionsChecker) Check(ctx context.Context, m *models.Monitor) Result
 // buildSIPOptions creates a minimal SIP OPTIONS message.
 func buildSIPOptions(targetHost, targetAddr, localHost, localPort string) string {
 	branch := fmt.Sprintf("z9hG4bK%d", time.Now().UnixNano())
-	callID := fmt.Sprintf("%d@service-monitor", time.Now().UnixNano())
+	callID := fmt.Sprintf("%d@conductor", time.Now().UnixNano())
 	return fmt.Sprintf(
 		"OPTIONS sip:%s SIP/2.0\r\n"+
 			"Via: SIP/2.0/UDP %s;branch=%s\r\n"+
 			"Max-Forwards: 70\r\n"+
 			"To: <sip:%s>\r\n"+
-			"From: <sip:monitor@service-monitor>;tag=sm001\r\n"+
+			"From: <sip:monitor@conductor>;tag=sm001\r\n"+
 			"Call-ID: %s\r\n"+
 			"CSeq: 1 OPTIONS\r\n"+
 			"Contact: <sip:monitor@%s:%s>\r\n"+

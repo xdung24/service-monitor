@@ -58,7 +58,7 @@ func (p *PromoSMSProvider) Send(ctx context.Context, cfg map[string]string, e Ev
 		return fmt.Errorf("promosms: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -117,7 +117,7 @@ func (p *SerwerSMSProvider) Send(ctx context.Context, cfg map[string]string, e E
 		return fmt.Errorf("serwersms: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -165,9 +165,9 @@ func (p *SevenIOProvider) Send(ctx context.Context, cfg map[string]string, e Eve
 		return fmt.Errorf("sevenio: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("SentWith", "service-monitor")
+	req.Header.Set("SentWith", "conductor")
 	req.Header.Set("X-Api-Key", apiKey)
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -217,7 +217,7 @@ func (p *SMSCProvider) Send(ctx context.Context, cfg map[string]string, e Event)
 		return fmt.Errorf("smsc: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -269,7 +269,7 @@ func (p *SMSEagleProvider) Send(ctx context.Context, cfg map[string]string, e Ev
 	if err != nil {
 		return fmt.Errorf("smseagle: create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -323,7 +323,7 @@ func (p *SMSIrProvider) Send(ctx context.Context, cfg map[string]string, e Event
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -380,7 +380,7 @@ func (p *TeltonikaProvider) Send(ctx context.Context, cfg map[string]string, e E
 		return fmt.Errorf("teltonika: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 	req.SetBasicAuth(username, password)
 
 	client := &http.Client{Timeout: 10 * time.Second}

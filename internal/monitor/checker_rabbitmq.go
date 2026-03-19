@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // RabbitMQChecker connects to the RabbitMQ management HTTP API and calls the

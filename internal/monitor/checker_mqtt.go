@@ -9,7 +9,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ func (c *MQTTChecker) Check(ctx context.Context, m *models.Monitor) Result {
 	errCh := make(chan error, 1)
 
 	//nolint:gosec // random suffix for client ID — not security-sensitive
-	clientID := fmt.Sprintf("service-monitor-%08x", rand.Uint32())
+	clientID := fmt.Sprintf("conductor-%08x", rand.Uint32())
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(brokerURL).

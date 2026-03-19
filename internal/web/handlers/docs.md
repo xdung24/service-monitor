@@ -16,11 +16,11 @@ ServiceMonitor is a self-hosted uptime monitoring tool. It regularly checks your
 
 ### Option 1 — Download the prebuilt binary
 
-1. Go to the [Releases page](https://github.com/xdung24/service-monitor/releases) and download the latest binary for your operating system.
+1. Go to the [Releases page](https://github.com/xdung24/conductor/releases) and download the latest binary for your operating system.
 2. Run it:
 
 ```
-./service-monitor
+./conductor
 ```
 
 3. Open `http://localhost:3001` in your browser. A one-time sign-up link is printed in the terminal — use it to create your admin account at `/register?token=…`.
@@ -246,7 +246,7 @@ On any monitor's detail page, click **Export** to download its configuration as 
 
 ### Import
 
-On the dashboard, click **Import** and upload a JSON file. Example files for every monitor type are available in the [examples/](https://github.com/xdung24/service-monitor/tree/main/examples) folder of the repository.
+On the dashboard, click **Import** and upload a JSON file. Example files for every monitor type are available in the [examples/](https://github.com/xdung24/conductor/tree/main/examples) folder of the repository.
 
 ```json
 {

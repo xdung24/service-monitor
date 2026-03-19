@@ -10,7 +10,7 @@ import (
 
 	"github.com/antchfx/xmlquery"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // checkHeaderConstraint verifies a response header presence/value assertion.

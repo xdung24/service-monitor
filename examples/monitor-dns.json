@@ -1,5 +1,5 @@
 {
-  "schema": "service-monitor/monitor/v1",
+  "schema": "conductor/monitor/v1",
   "name": "DNS — A record for example.com",
   "type": "dns",
   "url": "example.com",

@@ -63,7 +63,7 @@ func (p *OneBotProvider) Send(ctx context.Context, cfg map[string]string, e Even
 		return fmt.Errorf("onebot: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "service-monitor/1.0")
+	req.Header.Set("User-Agent", "conductor/1.0")
 
 	if token := cfg["token"]; token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

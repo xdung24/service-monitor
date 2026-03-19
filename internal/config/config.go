@@ -18,7 +18,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		ListenAddr: getEnv("LISTEN_ADDR", ":3001"),
-		DBPath:     getEnv("DB_PATH", "./data/service-monitor.db"),
+		DBPath:     getEnv("DB_PATH", "./data/conductor.db"),
 		DataDir:    getEnv("DATA_DIR", "./data"),
 		SecretKey:  getEnv("SECRET_KEY", "change-me-in-production"),
 	}

@@ -40,13 +40,13 @@ jobs:
         include:
           - goos: windows
             goarch: amd64
-            output: service-monitor-windows-x64.exe
+            output: conductor-windows-x64.exe
           - goos: linux
             goarch: amd64
-            output: service-monitor-linux-x64
+            output: conductor-linux-x64
           - goos: linux
             goarch: arm64
-            output: service-monitor-linux-arm64
+            output: conductor-linux-arm64
     
     steps:
       - name: Checkout code
@@ -97,9 +97,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ./artifacts/service-monitor-windows-x64.exe
-            ./artifacts/service-monitor-linux-x64
-            ./artifacts/service-monitor-linux-arm64
+            ./artifacts/conductor-windows-x64.exe
+            ./artifacts/conductor-linux-x64
+            ./artifacts/conductor-linux-arm64
           draft: false
           prerelease: false
           generate_release_notes: true

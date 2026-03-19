@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
-	"github.com/xdung24/service-monitor/internal/monitor"
-	"github.com/xdung24/service-monitor/internal/notifier"
+	"github.com/xdung24/conductor/internal/models"
+	"github.com/xdung24/conductor/internal/monitor"
+	"github.com/xdung24/conductor/internal/notifier"
 )
 
 // Scheduler manages periodic monitor checks.

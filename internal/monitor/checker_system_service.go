@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // SystemServiceChecker checks whether a named system service (systemd on Linux,

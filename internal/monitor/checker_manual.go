@@ -3,7 +3,7 @@ package monitor
 import (
 	"context"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // ManualChecker returns the user-set status stored in m.ManualStatus.

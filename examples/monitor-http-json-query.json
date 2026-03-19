@@ -1,5 +1,5 @@
 {
-  "schema": "service-monitor/monitor/v1",
+  "schema": "conductor/monitor/v1",
   "name": "JSON API — status field check",
   "type": "http",
   "url": "https://httpbin.org/json",

@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/config"
-	"github.com/xdung24/service-monitor/internal/database"
-	"github.com/xdung24/service-monitor/internal/models"
-	"github.com/xdung24/service-monitor/internal/scheduler"
-	"github.com/xdung24/service-monitor/internal/web"
+	"github.com/xdung24/conductor/internal/config"
+	"github.com/xdung24/conductor/internal/database"
+	"github.com/xdung24/conductor/internal/models"
+	"github.com/xdung24/conductor/internal/scheduler"
+	"github.com/xdung24/conductor/internal/web"
 )
 
 func main() {
@@ -89,7 +89,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("service-monitor listening on %s", cfg.ListenAddr)
+		log.Printf("conductor listening on %s", cfg.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}

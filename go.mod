@@ -1,4 +1,4 @@
-module github.com/xdung24/service-monitor
+module github.com/xdung24/conductor
 
 go 1.25.8
 

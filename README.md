@@ -1,4 +1,4 @@
-# service-monitor
+# conductor
 
 A production-ready, self-hosted uptime monitoring tool written in Go.
 

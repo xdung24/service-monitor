@@ -7,10 +7,10 @@ tmp_dir = "."
 
 [build]
   args_bin = []
-  bin = "service-monitor.exe"
+  bin = "conductor.exe"
   cmd = "make build"
   delay = 1000
-  entrypoint = ["service-monitor.exe"]
+  entrypoint = ["conductor.exe"]
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go"]

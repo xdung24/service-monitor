@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gosnmp/gosnmp"
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // SNMPChecker queries a single OID via SNMP and optionally asserts the returned

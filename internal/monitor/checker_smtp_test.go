@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xdung24/service-monitor/internal/models"
+	"github.com/xdung24/conductor/internal/models"
 )
 
 // smtpTestServer starts a minimal in-process fake SMTP server that accepts ONE
