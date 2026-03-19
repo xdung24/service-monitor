@@ -396,9 +396,9 @@
                 <label for="kafka_topic">Topic</label>
                 <input class="form-control" type="text" id="kafka_topic" name="kafka_topic"
                        value="{{ .Monitor.KafkaTopic }}"
-                       placeholder="service-monitor-healthcheck" />
+                       placeholder="conductor-healthcheck" />
                 <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
-                    Leave blank to use the default topic <code>service-monitor-healthcheck</code>.
+                    Leave blank to use the default topic <code>conductor-healthcheck</code>.
                     The topic is created automatically if it does not exist (requires auto-create enabled on the broker).
                 </small>
             </div>
