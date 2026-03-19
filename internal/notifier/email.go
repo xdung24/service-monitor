@@ -47,9 +47,9 @@ func (p *EmailProvider) Send(_ context.Context, cfg map[string]string, e Event) 
 		icon = "🔴 DOWN"
 	}
 
-	subject := fmt.Sprintf("[Service Monitor] %s is %s", e.MonitorName, e.StatusText())
+	subject := fmt.Sprintf("[Conductor] %s is %s", e.MonitorName, e.StatusText())
 	body := fmt.Sprintf(
-		"Monitor: %s\nStatus: %s\nURL: %s\nLatency: %dms\nMessage: %s\nTime: %s\n\n-- Service Monitor",
+		"Monitor: %s\nStatus: %s\nURL: %s\nLatency: %dms\nMessage: %s\nTime: %s\n\n-- Conductor",
 		e.MonitorName, icon, e.MonitorURL, e.LatencyMs, e.Message,
 		time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
 	)

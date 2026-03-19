@@ -152,7 +152,7 @@ func (h *Handler) NotificationTest(c *gin.Context) {
 		MonitorURL:  "https://example.com",
 		Status:      1,
 		LatencyMs:   42,
-		Message:     "This is a test notification from Service Monitor.",
+		Message:     "This is a test notification from Conductor.",
 	}
 
 	sendErr := p.Send(c.Request.Context(), cfg, testEvent)

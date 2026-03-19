@@ -114,12 +114,12 @@ func TestHTTPChecker_CustomAcceptedStatuses_500Rejected(t *testing.T) {
 func TestHTTPChecker_KeywordFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "hello service monitor world")
+		fmt.Fprint(w, "hello Conductor world")
 	}))
 	defer srv.Close()
 
 	m := baseMonitor(srv.URL)
-	m.HTTPKeyword = "service monitor"
+	m.HTTPKeyword = "Conductor"
 	r := (&HTTPChecker{}).Check(context.Background(), m)
 	if r.Status != 1 {
 		t.Errorf("keyword found: want UP, got DOWN: %s", r.Message)

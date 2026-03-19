@@ -26,7 +26,7 @@ func (p *RocketChatProvider) Send(ctx context.Context, cfg map[string]string, e 
 	}
 
 	payload := map[string]interface{}{
-		"username": "Service Monitor",
+		"username": "Conductor",
 		"attachments": []map[string]interface{}{
 			{
 				"color": color,

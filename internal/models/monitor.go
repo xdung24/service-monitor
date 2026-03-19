@@ -6,30 +6,30 @@ import "time"
 type MonitorType string
 
 const (
-	MonitorTypeHTTP          MonitorType = "http"
-	MonitorTypeTCP           MonitorType = "tcp"
-	MonitorTypePing          MonitorType = "ping"
-	MonitorTypeDNS           MonitorType = "dns"
-	MonitorTypePush          MonitorType = "push"
-	MonitorTypeSMTP          MonitorType = "smtp"
-	MonitorTypeMySQL         MonitorType = "mysql"
-	MonitorTypePostgres      MonitorType = "postgres"
-	MonitorTypeRedis         MonitorType = "redis"
-	MonitorTypeMongoDB       MonitorType = "mongodb"
-	MonitorTypeWebSocket     MonitorType = "websocket"
-	MonitorTypeMSSQL         MonitorType = "mssql"
-	MonitorTypeMQTT          MonitorType = "mqtt"
-	MonitorTypeGRPC          MonitorType = "grpc"
-	MonitorTypeDocker        MonitorType = "docker"
-	MonitorTypeRabbitMQ      MonitorType = "rabbitmq"
-	MonitorTypeSNMP          MonitorType = "snmp"
-	MonitorTypeSystemService MonitorType = "system_service"
-	MonitorTypeTailscale     MonitorType = "tailscale"
-	MonitorTypeGlobalping    MonitorType = "globalping"
-	MonitorTypeGroup         MonitorType = "group"
-	MonitorTypeManual        MonitorType = "manual"
-	MonitorTypeSIPOptions    MonitorType = "sip_options"
-	MonitorTypeKafka         MonitorType = "kafka"
+	MonitorTypeHTTP                MonitorType = "http"
+	MonitorTypeTCP                 MonitorType = "tcp"
+	MonitorTypePing                MonitorType = "ping"
+	MonitorTypeDNS                 MonitorType = "dns"
+	MonitorTypePush                MonitorType = "push"
+	MonitorTypeSMTP                MonitorType = "smtp"
+	MonitorTypeMySQL               MonitorType = "mysql"
+	MonitorTypePostgres            MonitorType = "postgres"
+	MonitorTypeRedis               MonitorType = "redis"
+	MonitorTypeMongoDB             MonitorType = "mongodb"
+	MonitorTypeWebSocket           MonitorType = "websocket"
+	MonitorTypeMSSQL               MonitorType = "mssql"
+	MonitorTypeMQTT                MonitorType = "mqtt"
+	MonitorTypeGRPC                MonitorType = "grpc"
+	MonitorTypeDocker              MonitorType = "docker"
+	MonitorTypeRabbitMQ            MonitorType = "rabbitmq"
+	MonitorTypeSNMP                MonitorType = "snmp"
+	MonitorTypeSystemConductorType             = "system_service"
+	MonitorTypeTailscale           MonitorType = "tailscale"
+	MonitorTypeGlobalping          MonitorType = "globalping"
+	MonitorTypeGroup               MonitorType = "group"
+	MonitorTypeManual              MonitorType = "manual"
+	MonitorTypeSIPOptions          MonitorType = "sip_options"
+	MonitorTypeKafka               MonitorType = "kafka"
 )
 
 // Monitor represents a monitored target.
@@ -104,7 +104,7 @@ type Monitor struct {
 	SNMPVersion   string `db:"snmp_version"`   // SNMP version: 1, 2c, or 3
 	SNMPExpected  string `db:"snmp_expected"`  // optional expected value assertion
 
-	// System service monitor field
+	// System Conductor field
 	ServiceName string `db:"service_name"` // systemd unit name or Windows service name
 
 	// Manual monitor field

@@ -4,7 +4,7 @@ ALTER TABLE monitors ADD COLUMN snmp_oid       TEXT    NOT NULL DEFAULT '';
 ALTER TABLE monitors ADD COLUMN snmp_version   TEXT    NOT NULL DEFAULT '2c';
 ALTER TABLE monitors ADD COLUMN snmp_expected  TEXT    NOT NULL DEFAULT '';
 
--- System service monitor field (service name for systemd / Windows SCM)
+-- System Conductor field (service name for systemd / Windows SCM)
 ALTER TABLE monitors ADD COLUMN service_name   TEXT    NOT NULL DEFAULT '';
 
 -- Manual monitor: stored UP/DOWN state (1=UP, 0=DOWN)

@@ -1,4 +1,4 @@
-# Service Monitor — Implementation Plan
+# Conductor — Implementation Plan
 
 Complete feature roadmap for the Go rewrite, organized into 7 phases.
 See `FEATURES.md` for current status of each item.

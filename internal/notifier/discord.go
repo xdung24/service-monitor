@@ -26,7 +26,7 @@ func (p *DiscordProvider) Send(ctx context.Context, cfg map[string]string, e Eve
 	}
 
 	payload := map[string]interface{}{
-		"username": "Service Monitor",
+		"username": "Conductor",
 		"embeds": []map[string]interface{}{
 			{
 				"title":       fmt.Sprintf("%s is %s", e.MonitorName, e.StatusText()),
@@ -36,7 +36,7 @@ func (p *DiscordProvider) Send(ctx context.Context, cfg map[string]string, e Eve
 					{"name": "URL", "value": e.MonitorURL, "inline": false},
 					{"name": "Latency", "value": fmt.Sprintf("%d ms", e.LatencyMs), "inline": true},
 				},
-				"footer":    map[string]string{"text": "Service Monitor"},
+				"footer":    map[string]string{"text": "Conductor"},
 				"timestamp": time.Now().UTC().Format(time.RFC3339),
 			},
 		},

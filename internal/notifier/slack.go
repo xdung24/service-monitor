@@ -36,7 +36,7 @@ func (p *SlackProvider) Send(ctx context.Context, cfg map[string]string, e Event
 					{"title": "Latency", "value": fmt.Sprintf("%d ms", e.LatencyMs), "short": true},
 					{"title": "Message", "value": e.Message, "short": true},
 				},
-				"footer": "Service Monitor",
+				"footer": "Conductor",
 				"ts":     time.Now().Unix(),
 			},
 		},
