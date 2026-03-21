@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -132,11 +133,22 @@ func (h *Handler) StatusPageDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/status-pages")
 }
 
+// statusPageCacheTTL controls how long the rendered public status page HTML is cached.
+const statusPageCacheTTL = 60 * time.Second
+
 // StatusPagePublic renders the unauthenticated public status page.
+// The rendered HTML is cached for statusPageCacheTTL to protect the DB from
+// repeated full-page loads (each page hit runs N×heartbeat queries).
 // Route: GET /status/:username/:slug
 func (h *Handler) StatusPagePublic(c *gin.Context) {
 	username := c.Param("username")
 	slug := c.Param("slug")
+
+	cacheKey := "page\x00" + username + "\x00" + slug
+	if cached, hit := h.pageCache.get(cacheKey); hit {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", cached)
+		return
+	}
 
 	db, err := h.registry.Get(username)
 	if err != nil {
@@ -188,14 +200,25 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 		})
 	}
 
-	c.HTML(http.StatusOK, "status_page_public.html", gin.H{
+	templateData := gin.H{
 		"Page":           page,
 		"Monitors":       monitors,
 		"AllOperational": allOperational && len(monitors) > 0,
 		"Now":            now.Format("2006-01-02 15:04:05 UTC"),
 		"Username":       username,
 		"Slug":           slug,
-	})
+	}
+
+	// Render into a buffer so we can cache the result.
+	var buf bytes.Buffer
+	if err := h.tmpl.ExecuteTemplate(&buf, "status_page_public.html", templateData); err != nil {
+		// Template error — fall back to direct render (won't cache).
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		return
+	}
+	rendered := buf.Bytes()
+	h.pageCache.set(cacheKey, rendered, statusPageCacheTTL)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", rendered)
 }
 
 // StatusPagePublicChartData is a public JSON endpoint that returns heartbeat

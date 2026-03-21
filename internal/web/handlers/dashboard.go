@@ -39,13 +39,15 @@ type Handler struct {
 	registry   *database.Registry        // per-user data DB registry
 	msched     *scheduler.MultiScheduler // per-user schedulers
 	cfg        *config.Config
-	users      *models.UserStore // backed by usersDB
-	docsHTML   template.HTML     // pre-rendered docs markdown (rendered once at startup)
-	chartCache *chartCache       // TTL cache for public chart JSON responses
+	users      *models.UserStore  // backed by usersDB
+	docsHTML   template.HTML      // pre-rendered docs markdown (rendered once at startup)
+	chartCache *chartCache        // TTL cache for public chart JSON responses
+	pageCache  *chartCache        // TTL cache for rendered public status page HTML
+	tmpl       *template.Template // reference for off-response rendering (cache fill)
 }
 
 // New creates a Handler.
-func New(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiScheduler, cfg *config.Config) *Handler {
+func New(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiScheduler, cfg *config.Config, tmpl *template.Template) *Handler {
 	return &Handler{
 		usersDB:    usersDB,
 		registry:   registry,
@@ -54,6 +56,8 @@ func New(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiSc
 		cfg:        cfg,
 		users:      models.NewUserStore(usersDB),
 		chartCache: newChartCache(),
+		pageCache:  newChartCache(),
+		tmpl:       tmpl,
 	}
 }
 

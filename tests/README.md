@@ -103,7 +103,7 @@ A passing run exits with code `0`. Any failed assertion exits with a non-zero co
 k6 run get-healthz.k6
 
 # Run against a different environment
-k6 run -e ENV=staging get-healthz.k6
+k6 run -e ENV=stagging get-healthz.k6
 ```
 
 The script ramps up to 10 virtual users over 10 s, holds for 30 s, then ramps down.

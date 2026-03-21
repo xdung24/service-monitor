@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xdung24/conductor/internal/config"
@@ -114,9 +115,37 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 
 	// Templates are embedded in the binary at compile time; any parse error
 	// crashes the process immediately at startup.
-	r.SetHTMLTemplate(mustParseTemplates())
+	tmpl := mustParseTemplates()
+	r.SetHTMLTemplate(tmpl)
 
-	h := handlers.New(usersDB, registry, msched, cfg)
+	// Security headers applied to every response.
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
+
+	// Return an empty 404 for all unregistered routes — avoids leaking path
+	// information and prevents Gin's default plain-text body.
+	r.NoRoute(func(c *gin.Context) {
+		c.Status(http.StatusNotFound)
+	})
+
+	h := handlers.New(usersDB, registry, msched, cfg, tmpl)
+
+	// Rate limiters for authentication endpoints.
+	// 10 attempts / minute per IP on login; 5 / minute on registration.
+	loginRL := handlers.RateLimiter(10, time.Minute)
+	registerRL := handlers.RateLimiter(5, time.Minute)
+
+	// Rate limiter for public (unauthenticated) endpoints.
+	// StatusPagePublic has no DB-level caching; StatusPagePublicChartData has
+	// a 60 s TTL cache but the first hit per key still queries the DB directly.
+	// Both accept arbitrary user-supplied :username, so limiting per IP also
+	// reduces username-enumeration and registry-open abuse.
+	publicRL := handlers.RateLimiter(60, time.Minute)
 
 	// Health endpoint (for Docker HEALTHCHECK)
 	r.GET("/healthz", func(c *gin.Context) {
@@ -130,21 +159,21 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 
 	// Auth
 	r.GET("/login", h.LoginPage)
-	r.POST("/login", h.LoginSubmit)
+	r.POST("/login", loginRL, h.LoginSubmit)
 	r.GET("/login/2fa", h.TwoFALoginPage)
-	r.POST("/login/2fa", h.TwoFALoginSubmit)
+	r.POST("/login/2fa", loginRL, h.TwoFALoginSubmit)
 	r.GET("/logout", h.Logout)
 
 	// Self-registration (open or invite-token gated)
 	r.GET("/register", h.RegisterPage)
-	r.POST("/register", h.RegisterSubmit)
+	r.POST("/register", registerRL, h.RegisterSubmit)
 
 	// Push endpoint (unauthenticated — external services call this to signal UP).
 	r.GET("/push/:token", h.MonitorPush)
 
 	// Public status page (unauthenticated)
-	r.GET("/status/:username/:slug", h.StatusPagePublic)
-	r.GET("/status/:username/:slug/chart-data/:id", h.StatusPagePublicChartData)
+	r.GET("/status/:username/:slug", publicRL, h.StatusPagePublic)
+	r.GET("/status/:username/:slug/chart-data/:id", publicRL, h.StatusPagePublicChartData)
 
 	// Dashboard (protected)
 	auth := r.Group("/")
