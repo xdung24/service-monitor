@@ -175,6 +175,10 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 	r.GET("/status/:username/:slug", publicRL, h.StatusPagePublic)
 	r.GET("/status/:username/:slug/chart-data/:id", publicRL, h.StatusPagePublicChartData)
 
+	// Public JSON summary endpoint (unauthenticated, no rate limit — cache-backed).
+	// Enabled per-page via a UUID generated in the status page settings.
+	r.GET("/summary/:uuid", h.StatusPagePublicSummary)
+
 	// Dashboard (protected)
 	auth := r.Group("/")
 	auth.Use(h.AuthRequired())

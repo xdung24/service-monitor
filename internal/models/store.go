@@ -448,6 +448,33 @@ func (s *UserStore) UnregisterAllPushTokens(username string) error {
 	return err
 }
 
+// RegisterSummaryToken records a mapping from status-page summary UUID to username in the shared users DB.
+func (s *UserStore) RegisterSummaryToken(uuid, username string) error {
+	_, err := s.db.ExecContext(context.Background(),
+		`INSERT INTO summary_tokens (uuid, username) VALUES (?, ?)
+		 ON CONFLICT(uuid) DO UPDATE SET username=excluded.username`,
+		uuid, username,
+	)
+	return err
+}
+
+// UnregisterSummaryToken removes the summary token mapping from the shared users DB.
+func (s *UserStore) UnregisterSummaryToken(uuid string) error {
+	_, err := s.db.ExecContext(context.Background(), `DELETE FROM summary_tokens WHERE uuid=?`, uuid)
+	return err
+}
+
+// LookupSummaryToken returns the username associated with the given summary UUID.
+// Returns an empty string (and nil error) if the UUID is not registered.
+func (s *UserStore) LookupSummaryToken(uuid string) (string, error) {
+	var username string
+	err := s.db.QueryRowContext(context.Background(), `SELECT username FROM summary_tokens WHERE uuid=?`, uuid).Scan(&username)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return username, err
+}
+
 // Delete removes a user record from the database.
 func (s *UserStore) Delete(username string) error {
 	_, err := s.db.ExecContext(context.Background(), `DELETE FROM users WHERE username=?`, username)

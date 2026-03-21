@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -11,6 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/xdung24/conductor/internal/models"
 )
+
+// generateUUID returns a random RFC 4122 version-4 UUID.
+func generateUUID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant bits
+	h := hex.EncodeToString(b)
+	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+}
 
 func (h *Handler) statusPageStore(c *gin.Context) *models.StatusPageStore {
 	return models.NewStatusPageStore(h.userDB(c))
@@ -64,6 +76,10 @@ func (h *Handler) StatusPageCreate(c *gin.Context) {
 		return
 	}
 
+	if page.SummaryUUID != "" {
+		// best-effort: register UUID in shared DB for public endpoint lookup
+		_ = h.users.RegisterSummaryToken(page.SummaryUUID, h.username(c))
+	}
 	_ = spStore.SetMonitors(id, monitorIDs)
 	c.Redirect(http.StatusFound, "/status-pages")
 }
@@ -116,6 +132,15 @@ func (h *Handler) StatusPageUpdate(c *gin.Context) {
 		})
 		return
 	}
+	// Synchronise the shared UUID index. best-effort — per-user DB is the source of truth.
+	if existing.SummaryUUID != updated.SummaryUUID {
+		if existing.SummaryUUID != "" {
+			_ = h.users.UnregisterSummaryToken(existing.SummaryUUID)
+		}
+		if updated.SummaryUUID != "" {
+			_ = h.users.RegisterSummaryToken(updated.SummaryUUID, h.username(c))
+		}
+	}
 	_ = spStore.SetMonitors(updated.ID, monitorIDs)
 	c.Redirect(http.StatusFound, "/status-pages")
 }
@@ -125,6 +150,10 @@ func (h *Handler) StatusPageDelete(c *gin.Context) {
 	page, ok := h.getStatusPage(c)
 	if !ok {
 		return
+	}
+	if page.SummaryUUID != "" {
+		// best-effort: clean up shared index
+		_ = h.users.UnregisterSummaryToken(page.SummaryUUID)
 	}
 	if err := h.statusPageStore(c).Delete(page.ID); err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
@@ -342,7 +371,20 @@ func statusPageFromForm(c *gin.Context) (*models.StatusPage, []int64, error) {
 	slug := c.PostForm("slug")
 	desc := c.PostForm("description")
 
-	page := &models.StatusPage{Name: name, Slug: slug, Description: desc}
+	// summary_enabled checkbox: present and "on" = enabled.
+	// summary_uuid hidden field carries the existing UUID when editing.
+	// A new UUID is generated when enabling for the first time.
+	summaryEnabled := c.PostForm("summary_enabled") == "on"
+	summaryUUID := c.PostForm("summary_uuid")
+	if summaryEnabled {
+		if summaryUUID == "" {
+			summaryUUID = generateUUID()
+		}
+	} else {
+		summaryUUID = ""
+	}
+
+	page := &models.StatusPage{Name: name, Slug: slug, Description: desc, SummaryUUID: summaryUUID}
 	if name == "" {
 		return page, nil, &formError{"name is required"}
 	}
@@ -358,4 +400,100 @@ func statusPageFromForm(c *gin.Context) (*models.StatusPage, []int64, error) {
 		}
 	}
 	return page, monitorIDs, nil
+}
+
+// summaryCacheTTL controls how long the public JSON summary response is cached.
+const summaryCacheTTL = 60 * time.Second
+
+// StatusPagePublicSummary serves a machine-readable JSON summary for a status page.
+// The page must have the JSON API feature enabled (summary_uuid != "").
+// Route: GET /summary/:uuid
+func (h *Handler) StatusPagePublicSummary(c *gin.Context) {
+	uuid := c.Param("uuid")
+
+	cacheKey := "summary\x00" + uuid
+	if cached, hit := h.pageCache.get(cacheKey); hit {
+		c.Data(http.StatusOK, "application/json; charset=utf-8", cached)
+		return
+	}
+
+	// Resolve UUID → username via the shared users DB.
+	username, err := h.users.LookupSummaryToken(uuid)
+	if err != nil || username == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	db, err := h.registry.Get(username)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	spStore := models.NewStatusPageStore(db)
+	page, err := spStore.GetBySummaryUUID(uuid)
+	if err != nil || page == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	monitorIDs, _ := spStore.ListMonitorIDs(page.ID)
+	mStore := models.NewMonitorStore(db)
+	bStore := models.NewHeartbeatStore(db)
+
+	type monitorEntry struct {
+		ID        int64   `json:"id"`
+		Name      string  `json:"name"`
+		Status    int     `json:"status"`
+		Uptime24h float64 `json:"uptime_24h"`
+	}
+
+	now := time.Now().UTC()
+	allOperational := true
+	monitors := make([]monitorEntry, 0, len(monitorIDs))
+	for _, mid := range monitorIDs {
+		m, err := mStore.Get(mid)
+		if err != nil || m == nil {
+			continue
+		}
+		latestStatus := -1
+		beats, _ := bStore.Latest(m.ID, 1)
+		if len(beats) > 0 {
+			latestStatus = beats[0].Status
+		}
+		if latestStatus != 1 {
+			allOperational = false
+		}
+		uptime24h, _ := bStore.UptimePercent(m.ID, now.Add(-24*time.Hour))
+		monitors = append(monitors, monitorEntry{
+			ID:        m.ID,
+			Name:      m.Name,
+			Status:    latestStatus,
+			Uptime24h: uptime24h,
+		})
+	}
+
+	type summaryResponse struct {
+		Name           string         `json:"name"`
+		Slug           string         `json:"slug"`
+		Description    string         `json:"description"`
+		AllOperational bool           `json:"all_operational"`
+		Monitors       []monitorEntry `json:"monitors"`
+		GeneratedAt    string         `json:"generated_at"`
+	}
+
+	payload, err := json.Marshal(summaryResponse{
+		Name:           page.Name,
+		Slug:           page.Slug,
+		Description:    page.Description,
+		AllOperational: allOperational && len(monitors) > 0,
+		Monitors:       monitors,
+		GeneratedAt:    now.Format(time.RFC3339),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.pageCache.set(cacheKey, payload, summaryCacheTTL)
+	c.Data(http.StatusOK, "application/json; charset=utf-8", payload)
 }

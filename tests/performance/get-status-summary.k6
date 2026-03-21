@@ -1,0 +1,32 @@
+import http from 'k6/http';
+import { check } from 'k6';
+
+const configData = JSON.parse(open('./environments/' + (__ENV.ENV || 'local') + '.json'));
+
+// UUID of a status page with the JSON summary endpoint enabled.
+// Override via: k6 run -e ENV=local -e UUID=your-uuid-here get-status-summary.k6
+const uuid = __ENV.UUID || 'replace-with-real-uuid';
+
+export const options = {
+  stages: [
+    { duration: '10s', target: 50 },   // ramp up — summary endpoint is cache-backed
+    { duration: '30s', target: 50 },   // hold at high concurrency
+    { duration: '10s', target: 0 },    // ramp down
+  ],
+  thresholds: {
+    http_req_failed:   ['rate<0.01'],   // error rate < 1%
+    http_req_duration: ['p(95)<100'],   // cached responses should be very fast
+  },
+};
+
+export default function () {
+  const res = http.get(`${configData.baseUrl}/summary/${uuid}`);
+
+  check(res, {
+    'status is 200 or 404':        (r) => r.status === 200 || r.status === 404,
+    'content-type is json':        (r) => (r.headers['Content-Type'] || '').includes('application/json'),
+    'if 200: has all_operational': (r) => r.status !== 200 || r.json('all_operational') !== undefined,
+    'if 200: has monitors array':  (r) => r.status !== 200 || Array.isArray(r.json('monitors')),
+    'if 200: has generated_at':    (r) => r.status !== 200 || r.json('generated_at') !== null,
+  });
+}
