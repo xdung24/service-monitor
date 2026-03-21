@@ -30,6 +30,7 @@ const (
 	MonitorTypeManual     MonitorType = "manual"
 	MonitorTypeSIPOptions MonitorType = "sip_options"
 	MonitorTypeKafka      MonitorType = "kafka"
+	MonitorTypeRadius     MonitorType = "radius"
 )
 
 // Monitor represents a monitored target.
@@ -115,6 +116,10 @@ type Monitor struct {
 
 	// Kafka Producer monitor field
 	KafkaTopic string `db:"kafka_topic"` // Kafka topic to produce a test message to
+
+	// RADIUS monitor fields
+	RadiusSecret          string `db:"radius_secret"`            // RADIUS shared secret
+	RadiusCalledStationID string `db:"radius_called_station_id"` // optional Called-Station-Id attribute value
 
 	// TLS certificate expiry alert (HTTP only)
 	CertExpiryAlertDays int `db:"cert_expiry_alert_days"` // return DOWN when cert expires within N days; 0 = disabled

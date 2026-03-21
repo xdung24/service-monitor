@@ -198,33 +198,33 @@ Every provider has unit tests (field-validation + `httptest` HTTP roundtrip).
 
 ---
 
-## Phase 6 — Monitor Types (B)
+## Phase 6 — Monitor Types (B) ✅ Complete
 
-### 6.1 SNMP
-- Migration 0019: add `snmp_community`, `snmp_version`, `snmp_oid`, `snmp_expected`
+### 6.1 SNMP ✅
+- Migration 0010: add `snmp_community`, `snmp_version`, `snmp_oid`, `snmp_expected`
 - Dependency: `github.com/gosnmp/gosnmp`
 - `SNMPChecker`: GET OID + optional `compareExpectedValue` assertion
 
-### 6.2 RabbitMQ
+### 6.2 RabbitMQ ✅
 - No new columns (URL = management API endpoint)
 - `RabbitMQChecker`: `GET {url}/api/healthchecks/node`, check `status == "ok"`
 
-### 6.3 Kafka Producer
-- Migration 0020: add `kafka_ssl INT DEFAULT 0`
+### 6.3 Kafka Producer ✅
+- Migration 0011: add `kafka_topic TEXT`
 - Dependency: `github.com/twmb/franz-go` (pure Go)
 - `KafkaChecker`: dial brokers, produce a test message, confirm delivery
 
-### 6.4 SIP Options
-- No new columns (URL = `sip:host:port`)
-- `SIPChecker`: raw UDP SIP OPTIONS, expect 200 OK
+### 6.4 SIP Options ✅
+- No new columns (URL = `host:port`)
+- `SIPChecker`: raw UDP SIP OPTIONS, expect SIP/2.0 response
 
-### 6.5 Radius
-- Migration 0021: add `radius_secret TEXT`, `radius_called_station_id TEXT`; reuse `http_username`/`http_password` for credentials
+### 6.5 Radius ✅
+- Migration 0013: add `radius_secret TEXT`, `radius_called_station_id TEXT`; reuse `http_username`/`http_password` for credentials
 - Dependency: `layeh.com/radius`
 - `RadiusChecker`: Access-Request; Access-Accept or Access-Reject = UP, no response = DOWN
 
-### 6.6 System Service
-- Migration 0022: add `service_name TEXT`
+### 6.6 System Service ✅
+- Migration 0010: add `service_name TEXT`
 - OS build tags: `systemctl` via D-Bus on Linux; SCM via `golang.org/x/sys/windows/svc/mgr`
 
 ---

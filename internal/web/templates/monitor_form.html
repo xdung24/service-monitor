@@ -66,6 +66,7 @@
                     <option value="sip_options" {{ if eq .Monitor.Type "sip_options" }}selected{{ end }}>SIP Options</option>
                     <option value="snmp"        {{ if eq .Monitor.Type "snmp"        }}selected{{ end }}>SNMP</option>
                     <option value="grpc"        {{ if eq .Monitor.Type "grpc"        }}selected{{ end }}>gRPC</option>
+                    <option value="radius"      {{ if eq .Monitor.Type "radius"      }}selected{{ end }}>RADIUS</option>
                 </optgroup>
                 <optgroup label="Infrastructure">
                     <option value="docker"         {{ if eq .Monitor.Type "docker"         }}selected{{ end }}>Docker Container</option>
@@ -408,6 +409,45 @@
             </small>
         </div>
 
+        <!-- RADIUS fields -->
+        <div id="radius-fields" style="display:{{ if eq .Monitor.Type "radius" }}block{{ else }}none{{ end }};">
+            <div class="form-group">
+                <label for="radius_secret">Shared Secret <span style="color:#ef4444;">*</span></label>
+                <input class="form-control" type="password" id="radius_secret" name="radius_secret"
+                       value="{{ .Monitor.RadiusSecret }}" autocomplete="new-password"
+                       placeholder="shared-secret" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    The RADIUS shared secret configured on the server.
+                </small>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label for="radius_username">Username <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                    <input class="form-control" type="text" id="radius_username" name="http_username"
+                           value="{{ .Monitor.HTTPUsername }}" autocomplete="off"
+                           placeholder="testuser" />
+                </div>
+                <div class="form-group">
+                    <label for="radius_password">Password <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                    <input class="form-control" type="password" id="radius_password" name="http_password"
+                           value="{{ .Monitor.HTTPPassword }}" autocomplete="new-password"
+                           placeholder="testpass" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="radius_called_station_id">Called-Station-Id <span style="color:#64748b; font-weight:400;">(optional)</span></label>
+                <input class="form-control" type="text" id="radius_called_station_id" name="radius_called_station_id"
+                       value="{{ .Monitor.RadiusCalledStationID }}"
+                       placeholder="00-11-22-33-44-55" />
+                <small style="color:#64748b; font-size:0.775rem; display:block; margin-top:0.25rem;">
+                    Optional Called-Station-Id attribute sent in the Access-Request.
+                </small>
+            </div>
+            <small style="color:#64748b; font-size:0.775rem; display:block; margin-bottom:0.75rem;">
+                URL format: <code>host:1812</code>. Any server response (Accept or Reject) is reported as UP.
+            </small>
+        </div>
+
         <!-- SNMP fields -->
         {{ $snmpVer := .Monitor.SNMPVersion }}
         <div id="snmp-fields" style="display:{{ if eq .Monitor.Type "snmp" }}block{{ else }}none{{ end }};">
@@ -730,6 +770,7 @@ function toggleTypeFields() {
     document.getElementById('group-fields').style.display          = (t === 'group')          ? 'block' : 'none';
     document.getElementById('manual-fields').style.display         = (t === 'manual')         ? 'block' : 'none';
     document.getElementById('kafka-fields').style.display          = (t === 'kafka')          ? 'block' : 'none';
+    document.getElementById('radius-fields').style.display         = (t === 'radius')         ? 'block' : 'none';
     // push-fields
     var pf = document.getElementById('push-fields');
     if (pf) pf.style.display = (t === 'push') ? 'block' : 'none';
@@ -768,6 +809,8 @@ function toggleTypeFields() {
         urlInput.placeholder = 'host:port  (no scheme)';
     } else if (t === 'sip_options') {
         urlInput.placeholder = 'host:5060  (SIP host and port)';
+    } else if (t === 'radius') {
+        urlInput.placeholder = 'host:1812  (RADIUS server address)';
     } else if (t === 'tailscale') {
         urlInput.placeholder = 'Tailscale hostname or IP, e.g. my-device';
     } else if (t === 'globalping') {

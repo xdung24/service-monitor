@@ -31,7 +31,7 @@ This document tracks which features are implemented, in progress, or planned.
 | RabbitMQ | ✅ Done | Management API health check (`/api/healthchecks/node`); Basic Auth |
 | gRPC Keyword | ✅ Done | Standard `grpc.health.v1.Health/Check`; optional keyword assertion on status string; TLS support |
 | SIP Options | ✅ Done | Raw UDP SIP OPTIONS request; checks SIP/2.0 response |
-| Radius | ⬜ Planned | Authentication request |
+| Radius | ✅ Done | Access-Request; Accept or Reject = UP; shared secret + optional Called-Station-Id |
 | Steam | ⬜ Planned | Steam Web API query |
 | GameDig | ⬜ Planned | Game server query protocol |
 | Tailscale Ping | ✅ Done | `tailscale ping --c 1` subprocess; checks for pong/DERP |

@@ -101,6 +101,8 @@ func checkerFor(db *sql.DB, m *models.Monitor) Checker {
 		return &SIPOptionsChecker{}
 	case models.MonitorTypeKafka:
 		return &KafkaChecker{}
+	case models.MonitorTypeRadius:
+		return &RadiusChecker{}
 	default:
 		return &HTTPChecker{}
 	}
