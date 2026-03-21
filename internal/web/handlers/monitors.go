@@ -508,6 +508,71 @@ func (h *Handler) getMonitor(c *gin.Context) (*models.Monitor, bool) {
 	return m, true
 }
 
+// allowedChartSpans maps the ?since= query param values to their durations.
+var allowedChartSpans = map[string]time.Duration{
+	"1h":  time.Hour,
+	"6h":  6 * time.Hour,
+	"24h": 24 * time.Hour,
+	"7d":  7 * 24 * time.Hour,
+	"30d": 30 * 24 * time.Hour,
+}
+
+// MonitorChartData returns heartbeats for a monitor as JSON.
+// Accepts optional ?since=1h|6h|24h|7d|30d (default: 24h), capped at 500 points.
+func (h *Handler) MonitorChartData(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid monitor id"})
+		return
+	}
+
+	span := c.DefaultQuery("since", "24h")
+	dur, ok := allowedChartSpans[span]
+	if !ok {
+		dur = 24 * time.Hour
+		span = "24h"
+	}
+	beats, err := h.heartbeatStore(c).LatestSince(id, time.Now().Add(-dur), 500)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	type point struct {
+		TS      string `json:"ts"`
+		Latency int    `json:"latency"`
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+	}
+	// beats is newest-first; reverse to oldest-first for chart rendering
+	pts := make([]point, len(beats))
+	for i, b := range beats {
+		pts[len(beats)-1-i] = point{
+			TS:      b.CreatedAt.UTC().Format(time.RFC3339),
+			Latency: b.LatencyMs,
+			Status:  b.Status,
+			Message: b.Message,
+		}
+	}
+
+	type downtimeBand struct {
+		Start string  `json:"start"`
+		End   *string `json:"end"`
+	}
+	dtEvents, _ := models.NewDowntimeEventStore(h.userDB(c)).ListSince(id, time.Now().Add(-dur))
+	bands := make([]downtimeBand, len(dtEvents))
+	for i, e := range dtEvents {
+		var end *string
+		if e.EndedAt != nil {
+			s := e.EndedAt.UTC().Format(time.RFC3339)
+			end = &s
+		}
+		bands[i] = downtimeBand{Start: e.StartedAt.UTC().Format(time.RFC3339), End: end}
+	}
+	c.JSON(http.StatusOK, gin.H{"points": pts, "downtime": bands})
+}
+
 func monitorFromForm(c *gin.Context) (*models.Monitor, error) {
 	intervalSec, err := strconv.Atoi(c.DefaultPostForm("interval_seconds", "60"))
 	if err != nil || intervalSec < 20 {

@@ -122,7 +122,7 @@ func (s *MonitorStore) Get(id int64) (*Monitor, error) {
 
 // Create inserts a new monitor and returns its ID.
 func (s *MonitorStore) Create(m *Monitor) (int64, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	res, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO monitors (name, type, url, interval_seconds, timeout_seconds, active, retries,
 		                      dns_server, dns_record_type, dns_expected,
@@ -205,7 +205,7 @@ func (s *MonitorStore) Update(m *Monitor) error {
 		m.SNMPCommunity, m.SNMPOid, m.SNMPVersion, m.SNMPExpected,
 		m.ServiceName, m.ManualStatus, m.ParentID,
 		m.KafkaTopic,
-		time.Now(), m.ID)
+		time.Now().UTC(), m.ID)
 	return err
 }
 
@@ -217,7 +217,7 @@ func (s *MonitorStore) Delete(id int64) error {
 
 // SetActive pauses or resumes a monitor.
 func (s *MonitorStore) SetActive(id int64, active bool) error {
-	_, err := s.db.ExecContext(context.Background(), `UPDATE monitors SET active=?, updated_at=? WHERE id=?`, active, time.Now(), id)
+	_, err := s.db.ExecContext(context.Background(), `UPDATE monitors SET active=?, updated_at=? WHERE id=?`, active, time.Now().UTC(), id)
 	return err
 }
 
@@ -263,13 +263,36 @@ func (s *HeartbeatStore) Latest(monitorID int64, limit int) ([]*Heartbeat, error
 	return beats, rows.Err()
 }
 
+// LatestSince returns heartbeats for a monitor since the given time, newest first, up to limit.
+func (s *HeartbeatStore) LatestSince(monitorID int64, since time.Time, limit int) ([]*Heartbeat, error) {
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id, monitor_id, status, latency_ms, message, created_at
+		FROM heartbeats WHERE monitor_id = ? AND created_at >= ?
+		ORDER BY created_at DESC LIMIT ?
+	`, monitorID, since.UTC(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var beats []*Heartbeat
+	for rows.Next() {
+		h := &Heartbeat{}
+		if err := rows.Scan(&h.ID, &h.MonitorID, &h.Status, &h.LatencyMs, &h.Message, &h.CreatedAt); err != nil {
+			return nil, err
+		}
+		beats = append(beats, h)
+	}
+	return beats, rows.Err()
+}
+
 // UptimePercent returns uptime % for a monitor over the given duration.
 func (s *HeartbeatStore) UptimePercent(monitorID int64, since time.Time) (float64, error) {
 	var total, up int
 	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*), SUM(CASE WHEN status=1 THEN 1 ELSE 0 END)
 		FROM heartbeats WHERE monitor_id=? AND created_at >= ?
-	`, monitorID, since).Scan(&total, &up)
+	`, monitorID, since.UTC()).Scan(&total, &up)
 	if err != nil || total == 0 {
 		return 0, err
 	}

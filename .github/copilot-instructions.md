@@ -122,6 +122,18 @@ All protected handlers access stores via context helpers defined on `Handler`:
 
 ## Key Conventions
 
+### Timezone Convention
+
+All datetimes are stored and transmitted in **UTC** throughout the stack. Follow these rules consistently:
+
+- **Go / database layer**: always call `.UTC()` before passing a `time.Time` to any SQL query parameter. SQLite stores datetimes as text; passing a non-UTC value produces a string with a `+HH:MM` offset that breaks lexicographic comparisons against the stored UTC strings.
+- **JSON API responses**: all timestamp fields are formatted with `time.RFC3339` after `.UTC()` — they always carry a `Z` suffix (e.g. `"2026-03-21T10:00:00Z"`).
+- **Authenticated pages (dashboard, chart modal)**: JavaScript receives UTC ISO strings. Use `new Date(tsString)` and then `toLocaleString()` / `toLocaleTimeString()` **without** a `timeZone` option — the browser automatically converts to the visitor's local timezone.
+- **Public status pages**: JavaScript also receives UTC ISO strings, but must display in UTC. Use `toLocaleTimeString([], {timeZone: 'UTC'})` / `toLocaleString([], {timeZone: 'UTC'})` and append `' UTC'` to the label so the timezone is visible.
+- **Server-side rendered template values** (e.g. heartbeat history, maintenance window times): format with `time.RFC3339` in the handler; the template displays the raw string. If local display is needed, convert client-side in JS.
+
+---
+
 - **Module path**: always `github.com/xdung24/conductor`
 - **Indentation**: tabs (Go standard)
 - **Naming**: Go idiomatic — camelCase for Go, snake_case for SQL columns

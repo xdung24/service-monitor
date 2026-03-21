@@ -73,7 +73,7 @@ This document tracks which features are implemented, in progress, or planned.
 | Notification providers: Webhook | ✅ Done | |
 | Notification providers: Telegram | ✅ Done | |
 | Notification providers: Email (SMTP) | ✅ Done | |
-| Public status page | ✅ Done | Read-only page at `/status/:username/:slug` showing selected monitors with 24h uptime |
+| Public status page | ✅ Done | Read-only page at `/status/:username/:slug` showing selected monitors with 24h uptime, sparklines, and interactive latency/downtime chart |
 | Maintenance windows | ✅ Done | Suppress alerts during scheduled downtime; per-monitor or global |
 | Tags / labels on monitors | ✅ Done | Color-coded labels; assign to monitors; displayed on dashboard |
 | Proxy management | ⬜ Planned | Shared proxy config referenced by monitors |
@@ -168,7 +168,11 @@ This document tracks which features are implemented, in progress, or planned.
 | Remote browser config | ⬜ Planned | Chromium endpoint for real-browser checks |
 | Cloudflare Tunnel integration | ⬜ Planned | Expose via cloudflared without open port |
 | Dark/light theme toggle | ✅ Done | User preference stored in `sm_theme` cookie; toggled from navbar |
-| Latency sparkline charts | ✅ Done | Inline SVG polyline of last 50 checks on dashboard |
+| Latency sparkline charts | ✅ Done | Inline SVG polyline of last 50 checks on dashboard and public status page |
+| Interactive latency chart | ✅ Done | Modal chart with selectable time spans (1h/6h/24h/7d/30d); latency polyline + downtime band overlay; on dashboard (authenticated, realtime) and public status page (unauthenticated, 60 s TTL cache) |
+| Downtime events tracking | ✅ Done | `downtime_events` table records contiguous DOWN periods (started_at, ended_at, duration_s); written by scheduler on state transitions; queried by chart API to render downtime bands |
+| Chart JSON API | ✅ Done | `GET /monitors/:id/chart-data?since=` (authenticated, realtime) and `GET /status/:username/:slug/chart-data/:id?since=` (public, cached); both return `{"points":[…],"downtime":[…]}` — see **Embedding the Chart** section in README |
+| Public chart cache | ✅ Done | Unauthenticated chart endpoint responses cached in-memory (60 s TTL, `sync.Map` + background eviction) to prevent DB flooding |
 | Multi-user support | ✅ Done | Per-user monitors/notifications in isolated SQLite DB files; shared `users.db` for auth + push token routing; `Registry` + `MultiScheduler` for per-user DB and scheduler lifecycle |
 | Import / export monitors | ✅ Done | Export a single monitor's config as JSON (`GET /monitors/:id/export`); import via file upload (`POST /monitors/import`) |
 | User management admin page | ✅ Done | `/admin/users` — list, add, change password, delete users |

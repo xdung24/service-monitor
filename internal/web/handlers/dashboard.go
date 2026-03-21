@@ -35,23 +35,25 @@ const (
 
 // Handler holds shared dependencies for all HTTP handlers.
 type Handler struct {
-	usersDB  *sql.DB                   // shared users database (auth + push_tokens)
-	registry *database.Registry        // per-user data DB registry
-	msched   *scheduler.MultiScheduler // per-user schedulers
-	cfg      *config.Config
-	users    *models.UserStore // backed by usersDB
-	docsHTML template.HTML     // pre-rendered docs markdown (rendered once at startup)
+	usersDB    *sql.DB                   // shared users database (auth + push_tokens)
+	registry   *database.Registry        // per-user data DB registry
+	msched     *scheduler.MultiScheduler // per-user schedulers
+	cfg        *config.Config
+	users      *models.UserStore // backed by usersDB
+	docsHTML   template.HTML     // pre-rendered docs markdown (rendered once at startup)
+	chartCache *chartCache       // TTL cache for public chart JSON responses
 }
 
 // New creates a Handler.
 func New(usersDB *sql.DB, registry *database.Registry, msched *scheduler.MultiScheduler, cfg *config.Config) *Handler {
 	return &Handler{
-		usersDB:  usersDB,
-		registry: registry,
-		msched:   msched,
-		docsHTML: renderDocsMarkdown(),
-		cfg:      cfg,
-		users:    models.NewUserStore(usersDB),
+		usersDB:    usersDB,
+		registry:   registry,
+		msched:     msched,
+		docsHTML:   renderDocsMarkdown(),
+		cfg:        cfg,
+		users:      models.NewUserStore(usersDB),
+		chartCache: newChartCache(),
 	}
 }
 

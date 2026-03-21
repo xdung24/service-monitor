@@ -93,6 +93,59 @@ compose.yaml
 Makefile
 ```
 
+## Chart API
+
+The monitor latency/downtime chart is driven by a JSON endpoint that can be embedded in any page.
+
+### Endpoints
+
+| Route | Auth | Caching |
+|---|---|---|
+| `GET /monitors/:id/chart-data?since=` | Session cookie or API key (owner/admin) | None — always realtime |
+| `GET /status/:username/:slug/chart-data/:id?since=` | None (public) | 60 s in-memory TTL |
+
+`?since=` accepts: `1h`, `6h`, `24h` (default), `7d`, `30d`.
+
+### Response shape
+
+```json
+{
+  "points": [
+    { "ts": "2026-03-21T10:00:00Z", "latency": 142, "status": 1, "message": "" }
+  ],
+  "downtime": [
+    { "start": "2026-03-21T09:00:00Z", "end": "2026-03-21T09:15:00Z" },
+    { "start": "2026-03-21T10:30:00Z", "end": null }
+  ]
+}
+```
+
+- `status`: `1` = UP, `0` = DOWN
+- `end: null` means the incident is still ongoing
+- `points` are oldest-first, up to 500 entries
+
+### Embedding the chart
+
+Add two elements and call the render function from `dashboard.html`:
+
+```html
+<svg id="my-chart-svg" width="100%" style="height:200px;"></svg>
+<div id="my-chart-tooltip" style="position:fixed;display:none;"></div>
+```
+
+```js
+// Copy renderChart(data, svgId, tooltipId) from dashboard.html,
+// then call it:
+fetch('/status/alice/my-page/chart-data/3?since=24h')
+  .then(r => r.json())
+  .then(data => renderChart(data, 'my-chart-svg', 'my-chart-tooltip'));
+```
+
+**Key constraints when embedding:**
+- The public endpoint only serves monitors that are linked to the named status page — arbitrary monitor IDs return 404.
+- Call `renderChart` after the SVG element is visible in the DOM; it reads `getBoundingClientRect()` at call time.
+- For a new embed location behind auth, add a route inside the `auth` group that calls the same DB queries and returns the same JSON shape.
+
 ## Roadmap
 
 - [ ] WebSocket Upgrade monitor

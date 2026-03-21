@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"html/template"
 	"net/http"
 	"strconv"
 	"time"
@@ -154,11 +156,12 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 	bStore := models.NewHeartbeatStore(db)
 
 	type entry struct {
-		Monitor       *models.Monitor
-		Uptime24h     float64
-		LatestStatus  int
+		Monitor      *models.Monitor
+		Uptime24h    float64
+		LatestStatus int
+		Sparkline    template.HTML
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	var monitors []entry
 	allOperational := true
 	for _, mid := range monitorIDs {
@@ -167,7 +170,7 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 			continue
 		}
 		latestStatus := -1 // -1 = pending/unknown
-		beats, _ := bStore.Latest(m.ID, 1)
+		beats, _ := bStore.Latest(m.ID, 50)
 		if len(beats) > 0 {
 			m.LastStatus = &beats[0].Status
 			m.LastLatency = &beats[0].LatencyMs
@@ -177,7 +180,12 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 			allOperational = false
 		}
 		uptime24h, _ := bStore.UptimePercent(m.ID, now.Add(-24*time.Hour))
-		monitors = append(monitors, entry{Monitor: m, Uptime24h: uptime24h, LatestStatus: latestStatus})
+		monitors = append(monitors, entry{
+			Monitor:      m,
+			Uptime24h:    uptime24h,
+			LatestStatus: latestStatus,
+			Sparkline:    computeSparklineSVG(beats),
+		})
 	}
 
 	c.HTML(http.StatusOK, "status_page_public.html", gin.H{
@@ -185,7 +193,109 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 		"Monitors":       monitors,
 		"AllOperational": allOperational && len(monitors) > 0,
 		"Now":            now.Format("2006-01-02 15:04:05 UTC"),
+		"Username":       username,
+		"Slug":           slug,
 	})
+}
+
+// StatusPagePublicChartData is a public JSON endpoint that returns heartbeat
+// history for a monitor, but only if it belongs to the given status page.
+// Route: GET /status/:username/:slug/chart-data/:id
+func (h *Handler) StatusPagePublicChartData(c *gin.Context) {
+	username := c.Param("username")
+	slug := c.Param("slug")
+	idStr := c.Param("id")
+	monitorID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid monitor id"})
+		return
+	}
+
+	db, err := h.registry.Get(username)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	// Verify the monitor is actually linked to this status page.
+	spStore := models.NewStatusPageStore(db)
+	page, err := spStore.GetBySlug(slug)
+	if err != nil || page == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	linkedIDs, _ := spStore.ListMonitorIDs(page.ID)
+	found := false
+	for _, id := range linkedIDs {
+		if id == monitorID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	span := c.DefaultQuery("since", "24h")
+	dur, ok := allowedChartSpans[span]
+	if !ok {
+		dur = 24 * time.Hour
+		span = "24h"
+	}
+
+	// Public callers get a cached response — protects the DB from flooding.
+	// Authenticated owners (MonitorChartData) bypass this endpoint entirely.
+	cacheKey := chartCacheKey(username, idStr, span)
+	if cached, hit := h.chartCache.get(cacheKey); hit {
+		c.Data(http.StatusOK, "application/json; charset=utf-8", cached)
+		return
+	}
+
+	beats, err := models.NewHeartbeatStore(db).LatestSince(monitorID, time.Now().Add(-dur), 500)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	type point struct {
+		TS      string `json:"ts"`
+		Latency int    `json:"latency"`
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+	}
+	// beats is newest-first; reverse to oldest-first for chart rendering
+	pts := make([]point, len(beats))
+	for i, b := range beats {
+		pts[len(beats)-1-i] = point{
+			TS:      b.CreatedAt.UTC().Format(time.RFC3339),
+			Latency: b.LatencyMs,
+			Status:  b.Status,
+			Message: b.Message,
+		}
+	}
+
+	type downtimeBand struct {
+		Start string  `json:"start"`
+		End   *string `json:"end"`
+	}
+	dtEvents, _ := models.NewDowntimeEventStore(db).ListSince(monitorID, time.Now().Add(-dur))
+	bands := make([]downtimeBand, len(dtEvents))
+	for i, e := range dtEvents {
+		var end *string
+		if e.EndedAt != nil {
+			s := e.EndedAt.UTC().Format(time.RFC3339)
+			end = &s
+		}
+		bands[i] = downtimeBand{Start: e.StartedAt.UTC().Format(time.RFC3339), End: end}
+	}
+
+	payload, err := json.Marshal(gin.H{"points": pts, "downtime": bands})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.chartCache.set(cacheKey, payload, chartCacheTTL)
+	c.Data(http.StatusOK, "application/json; charset=utf-8", payload)
 }
 
 func (h *Handler) getStatusPage(c *gin.Context) (*models.StatusPage, bool) {

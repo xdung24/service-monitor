@@ -64,6 +64,22 @@
             color: #475569;
         }
         .public-footer a { color: #6366f1; text-decoration: none; }
+        .sparkline-btn {
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            transition: background 0.15s;
+        }
+        .sparkline-btn:hover { background: rgba(56,189,248,0.12); }
+        [data-theme="light"] .sparkline-btn:hover { background: rgba(14,165,233,0.1); }
+        [data-theme="light"] #sp-chart-modal .card { background: #ffffff; }
+        [data-theme="light"] #sp-chart-tooltip { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+        .sp-chart-span-active { background: rgba(56,189,248,0.18) !important; color: #38bdf8 !important; }
+        [data-theme="light"] .sp-chart-span-active { background: rgba(14,165,233,0.15) !important; color: #0ea5e9 !important; }
     </style>
 </head>
 <body>
@@ -96,9 +112,11 @@
         <span style="font-size:0.875rem; color:#e2e8f0; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
             {{ .Monitor.Name }}
         </span>
-        <span style="font-size:0.75rem; color:#64748b; flex-shrink:0;">
-            {{ .Monitor.URL }}
-        </span>
+        {{ if .Sparkline }}
+        <button class="sparkline-btn" data-id="{{ .Monitor.ID }}" data-name="{{ .Monitor.Name | js }}" title="Click to expand chart" style="flex-shrink:0;">
+            {{ .Sparkline }}
+        </button>
+        {{ end }}
         <span class="uptime-bar {{ if ge .Uptime24h 99.0 }}uptime-good{{ else if ge .Uptime24h 95.0 }}uptime-warn{{ else }}uptime-bad{{ end }}">
             {{ printf "%.1f" .Uptime24h }}%
         </span>
@@ -119,6 +137,202 @@
 </div>
 
 </div>
+
+<!-- Chart modal -->
+<div id="sp-chart-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:1000; align-items:center; justify-content:center;">
+    <div class="card" style="width:min(860px,95vw); padding:1.5rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+            <h2 id="sp-chart-modal-title" style="margin:0; font-size:1.1rem;"></h2>
+            <button onclick="spCloseChartModal()" class="btn btn-ghost" style="padding:0.3rem 0.7rem; font-size:1rem;">&times;</button>
+        </div>
+        <div style="display:flex; gap:0.35rem; margin-bottom:1rem;">
+            <button class="btn btn-ghost sp-chart-span-btn" data-span="1h"  style="padding:0.2rem 0.6rem;font-size:0.8rem;">1h</button>
+            <button class="btn btn-ghost sp-chart-span-btn" data-span="6h"  style="padding:0.2rem 0.6rem;font-size:0.8rem;">6h</button>
+            <button class="btn btn-ghost sp-chart-span-btn sp-chart-span-active" data-span="24h" style="padding:0.2rem 0.6rem;font-size:0.8rem;">24h</button>
+            <button class="btn btn-ghost sp-chart-span-btn" data-span="7d"  style="padding:0.2rem 0.6rem;font-size:0.8rem;">7d</button>
+            <button class="btn btn-ghost sp-chart-span-btn" data-span="30d" style="padding:0.2rem 0.6rem;font-size:0.8rem;">30d</button>
+        </div>
+        <div id="sp-chart-loading" style="text-align:center; padding:2rem; color:#94a3b8;">Loading&hellip;</div>
+        <div id="sp-chart-container" style="display:none;">
+            <svg id="sp-chart-svg" width="100%" height="200" style="display:block; overflow:visible;"></svg>
+            <div id="sp-chart-tooltip" style="position:fixed; display:none; background:#1e293b; color:#e2e8f0; border:1px solid #334155;
+                 padding:0.4rem 0.7rem; border-radius:6px; font-size:0.78rem; pointer-events:none; z-index:2000;"></div>
+            <div style="display:flex; gap:1.5rem; margin-top:0.75rem; font-size:0.8rem; color:#94a3b8;">
+                <div><span style="display:inline-block;width:10px;height:3px;background:#38bdf8;vertical-align:middle;border-radius:2px;"></span> Latency (ms)</div>
+                <div><span style="display:inline-block;width:10px;height:10px;background:#f87171;border-radius:50%;vertical-align:middle;"></span> Down</div>
+            </div>
+        </div>
+        <div id="sp-chart-error" style="display:none; color:#f87171; text-align:center; padding:1rem;"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var username = {{ .Username | js }};
+    var slug = {{ .Slug | js }};
+    var currentChartId = null;
+    var currentChartSpan = '24h';
+
+    document.querySelectorAll('.sparkline-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            spOpenChartModal(this.dataset.id, this.dataset.name);
+        });
+    });
+
+    document.querySelectorAll('.sp-chart-span-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            currentChartSpan = this.dataset.span;
+            spLoadChartData(currentChartId, currentChartSpan);
+        });
+    });
+
+    window.spOpenChartModal = function(id, name) {
+        currentChartId = id;
+        var modal = document.getElementById('sp-chart-modal');
+        document.getElementById('sp-chart-modal-title').textContent = name + ' \u2014 Latency History';
+        modal.style.display = 'flex';
+        spLoadChartData(id, currentChartSpan);
+    };
+
+    function spLoadChartData(id, span) {
+        document.querySelectorAll('.sp-chart-span-btn').forEach(function(btn) {
+            btn.classList.toggle('sp-chart-span-active', btn.dataset.span === span);
+        });
+        document.getElementById('sp-chart-loading').style.display = 'block';
+        document.getElementById('sp-chart-container').style.display = 'none';
+        document.getElementById('sp-chart-error').style.display = 'none';
+
+        fetch('/status/' + username + '/' + slug + '/chart-data/' + id + '?since=' + span)
+            .then(function(r) { return r.json(); })
+            .then(function(data) { spRenderChart(data); })
+            .catch(function() {
+                document.getElementById('sp-chart-loading').style.display = 'none';
+                var errEl = document.getElementById('sp-chart-error');
+                errEl.textContent = 'Failed to load chart data.';
+                errEl.style.display = 'block';
+            });
+    }
+
+    window.spCloseChartModal = function() {
+        document.getElementById('sp-chart-modal').style.display = 'none';
+    };
+
+    document.getElementById('sp-chart-modal').addEventListener('click', function(e) {
+        if (e.target === this) spCloseChartModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') spCloseChartModal();
+    });
+
+    function spRenderChart(data) {
+        document.getElementById('sp-chart-loading').style.display = 'none';
+        var container = document.getElementById('sp-chart-container');
+        var points = data.points || [];
+
+        if (!points || points.length === 0) {
+            var errEl = document.getElementById('sp-chart-error');
+            errEl.textContent = 'No data available.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        var svg = document.getElementById('sp-chart-svg');
+        var bbox = svg.getBoundingClientRect();
+        var W = bbox.width || 800;
+        var H = 200;
+        var padL = 48, padR = 12, padT = 16, padB = 28;
+        var chartW = W - padL - padR;
+        var chartH = H - padT - padB;
+
+        var latencies = points.map(function(p) { return p.latency; });
+        var maxVal = Math.max.apply(null, latencies) || 1;
+
+        var svgContent = '';
+        var gridLines = 4;
+        for (var i = 0; i <= gridLines; i++) {
+            var yVal = Math.round(maxVal * i / gridLines);
+            var yPx = padT + chartH - (yVal / maxVal) * chartH;
+            svgContent += '<line x1="' + padL + '" y1="' + yPx + '" x2="' + (padL + chartW) + '" y2="' + yPx + '"' +
+                ' stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>';
+            svgContent += '<text x="' + (padL - 6) + '" y="' + (yPx + 4) + '" text-anchor="end"' +
+                ' font-size="11" fill="#64748b">' + yVal + '</text>';
+        }
+
+        var upPts = [];
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            var x = padL + (i / (points.length - 1 || 1)) * chartW;
+            var y = padT + chartH - (p.latency / maxVal) * chartH;
+            if (p.status === 1) upPts.push(x.toFixed(1) + ',' + y.toFixed(1));
+        }
+        if (upPts.length > 1) {
+            svgContent += '<polyline points="' + upPts.join(' ') + '" fill="none" stroke="#38bdf8" stroke-width="2"' +
+                ' stroke-linejoin="round" stroke-linecap="round"/>';
+        }
+
+        // Downtime bands
+        if (data.downtime && data.downtime.length > 0 && points.length > 1) {
+            var tFirst = new Date(points[0].ts).getTime();
+            var tLast  = new Date(points[points.length - 1].ts).getTime();
+            var tRange = tLast - tFirst || 1;
+            data.downtime.forEach(function(d) {
+                var tStart = Math.max(new Date(d.start).getTime(), tFirst);
+                var tEnd   = d.end ? Math.min(new Date(d.end).getTime(), tLast) : tLast;
+                var x1 = padL + ((tStart - tFirst) / tRange) * chartW;
+                var x2 = padL + ((tEnd   - tFirst) / tRange) * chartW;
+                svgContent += '<rect x="' + x1.toFixed(1) + '" y="' + padT + '"' +
+                    ' width="' + Math.max(x2 - x1, 2).toFixed(1) + '" height="' + chartH + '"' +
+                    ' fill="rgba(239,68,68,0.18)" rx="1"/>';
+            });
+        }
+
+        var xLabelIdxs = [0, Math.floor(points.length / 2), points.length - 1];
+        xLabelIdxs.forEach(function(idx) {
+            if (idx < points.length) {
+                var x = padL + (idx / (points.length - 1 || 1)) * chartW;
+                var ts = new Date(points[idx].ts);
+                var label = ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZone:'UTC'}) + ' UTC';
+                svgContent += '<text x="' + x.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle"' +
+                    ' font-size="11" fill="#64748b">' + label + '</text>';
+            }
+        });
+
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            var x = padL + (i / (points.length - 1 || 1)) * chartW;
+            svgContent += '<rect class="sp-chart-hit" x="' + (x - chartW / points.length / 2).toFixed(1) + '" y="' + padT + '"' +
+                ' width="' + (chartW / points.length).toFixed(1) + '" height="' + chartH + '"' +
+                ' fill="transparent" data-i="' + i + '"/>';
+        }
+
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        svg.innerHTML = svgContent;
+
+        var tooltip = document.getElementById('sp-chart-tooltip');
+        svg.querySelectorAll('.sp-chart-hit').forEach(function(rect) {
+            rect.addEventListener('mouseenter', function(e) {
+                var idx = parseInt(this.dataset.i);
+                var pt = points[idx];
+                var ts = new Date(pt.ts);
+                var statusText = pt.status === 1 ? 'UP' : 'DOWN';
+                tooltip.textContent = ts.toLocaleString([], {timeZone:'UTC'}) + ' UTC — ' + statusText + ' — ' + pt.latency + 'ms'
+                    + (pt.message ? ' \u2014 ' + pt.message : '');
+                tooltip.style.display = 'block';
+            });
+            rect.addEventListener('mousemove', function(e) {
+                tooltip.style.left = (e.clientX + 14) + 'px';
+                tooltip.style.top  = (e.clientY - 28) + 'px';
+            });
+            rect.addEventListener('mouseleave', function() {
+                tooltip.style.display = 'none';
+            });
+        });
+
+        container.style.display = 'block';
+    }
+})();
+</script>
 </body>
 </html>
 {{ end }}

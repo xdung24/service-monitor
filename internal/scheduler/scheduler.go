@@ -15,16 +15,17 @@ import (
 
 // Scheduler manages periodic monitor checks.
 type Scheduler struct {
-	db            *sql.DB
-	monitors      *models.MonitorStore
-	heartbeat     *models.HeartbeatStore
-	notifications *models.NotificationStore
-	notifLogs     *models.NotificationLogStore
-	maintenance   *models.MaintenanceStore
-	jobs          map[int64]*job
-	mu            sync.Mutex
-	ctx           context.Context
-	cancel        context.CancelFunc
+	db             *sql.DB
+	monitors       *models.MonitorStore
+	heartbeat      *models.HeartbeatStore
+	notifications  *models.NotificationStore
+	notifLogs      *models.NotificationLogStore
+	maintenance    *models.MaintenanceStore
+	downtimeEvents *models.DowntimeEventStore
+	jobs           map[int64]*job
+	mu             sync.Mutex
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 type job struct {
@@ -37,15 +38,16 @@ type job struct {
 func New(db *sql.DB) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		db:            db,
-		monitors:      models.NewMonitorStore(db),
-		heartbeat:     models.NewHeartbeatStore(db),
-		notifications: models.NewNotificationStore(db),
-		notifLogs:     models.NewNotificationLogStore(db),
-		maintenance:   models.NewMaintenanceStore(db),
-		jobs:          make(map[int64]*job),
-		ctx:           ctx,
-		cancel:        cancel,
+		db:             db,
+		monitors:       models.NewMonitorStore(db),
+		heartbeat:      models.NewHeartbeatStore(db),
+		notifications:  models.NewNotificationStore(db),
+		notifLogs:      models.NewNotificationLogStore(db),
+		maintenance:    models.NewMaintenanceStore(db),
+		downtimeEvents: models.NewDowntimeEventStore(db),
+		jobs:           make(map[int64]*job),
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 }
 
@@ -114,7 +116,7 @@ func (s *Scheduler) Schedule(m *models.Monitor) {
 					return
 				}
 				// Skip check if within an active maintenance window.
-				if inMaint, _ := s.maintenance.IsInMaintenance(latest.ID, time.Now()); inMaint {
+				if inMaint, _ := s.maintenance.IsInMaintenance(latest.ID, time.Now().UTC()); inMaint {
 					log.Printf("monitor[%d] %s — skipped (maintenance window active)", latest.ID, latest.Name)
 					continue
 				}
@@ -143,23 +145,39 @@ func (s *Scheduler) Unschedule(id int64) {
 func (s *Scheduler) runCheck(m *models.Monitor) {
 	result := monitor.Run(s.ctx, m)
 
+	now := time.Now().UTC()
+
+	// Get previous status for transition detection before recording new result.
+	prevStatus, _, _ := s.monitors.GetLastStatuses(m.ID)
+
 	h := &models.Heartbeat{
 		MonitorID: m.ID,
 		Status:    result.Status,
 		LatencyMs: result.LatencyMs,
 		Message:   result.Message,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	}
 
 	if err := s.heartbeat.Insert(h); err != nil {
 		log.Printf("scheduler: failed to save heartbeat for monitor %d: %v", m.ID, err)
 	}
 
-	status := "UP"
+	statusText := "UP"
 	if result.Status == 0 {
-		status = "DOWN"
+		statusText = "DOWN"
 	}
-	log.Printf("monitor[%d] %s — %s (%dms) %s", m.ID, m.Name, status, result.LatencyMs, result.Message)
+	log.Printf("monitor[%d] %s — %s (%dms) %s", m.ID, m.Name, statusText, result.LatencyMs, result.Message)
+
+	// Track downtime events on state transitions.
+	if result.Status == 0 && (prevStatus == nil || *prevStatus != 0) {
+		if err := s.downtimeEvents.OpenIncident(m.ID, now); err != nil {
+			log.Printf("scheduler: open incident for monitor %d: %v", m.ID, err)
+		}
+	} else if result.Status == 1 && prevStatus != nil && *prevStatus == 0 {
+		if err := s.downtimeEvents.CloseIncident(m.ID, now); err != nil {
+			log.Printf("scheduler: close incident for monitor %d: %v", m.ID, err)
+		}
+	}
 
 	// State-change detection — only notify when status flips.
 	s.maybeNotify(m, result)
@@ -263,12 +281,17 @@ func (s *Scheduler) maybeNotify(m *models.Monitor, result monitor.Result) {
 // fires state-change notifications. Called by the unauthenticated /push/:token
 // endpoint instead of the scheduler poller.
 func (s *Scheduler) RecordHeartbeat(m *models.Monitor, status, latencyMs int, message string) {
+	now := time.Now().UTC()
+
+	// Get previous status for transition detection before recording new result.
+	prevStatus, _, _ := s.monitors.GetLastStatuses(m.ID)
+
 	h := &models.Heartbeat{
 		MonitorID: m.ID,
 		Status:    status,
 		LatencyMs: latencyMs,
 		Message:   message,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	}
 	if err := s.heartbeat.Insert(h); err != nil {
 		log.Printf("scheduler: push heartbeat insert for monitor %d: %v", m.ID, err)
@@ -278,6 +301,18 @@ func (s *Scheduler) RecordHeartbeat(m *models.Monitor, status, latencyMs int, me
 		statusText = "DOWN"
 	}
 	log.Printf("push[%d] %s — %s (%dms) %s", m.ID, m.Name, statusText, latencyMs, message)
+
+	// Track downtime events on state transitions.
+	if status == 0 && (prevStatus == nil || *prevStatus != 0) {
+		if err := s.downtimeEvents.OpenIncident(m.ID, now); err != nil {
+			log.Printf("scheduler: open incident for monitor %d: %v", m.ID, err)
+		}
+	} else if status == 1 && prevStatus != nil && *prevStatus == 0 {
+		if err := s.downtimeEvents.CloseIncident(m.ID, now); err != nil {
+			log.Printf("scheduler: close incident for monitor %d: %v", m.ID, err)
+		}
+	}
+
 	s.maybeNotify(m, monitor.Result{Status: status, LatencyMs: latencyMs, Message: message})
 	if err := s.monitors.UpdateLastStatus(m.ID, status); err != nil {
 		log.Printf("scheduler: push update last_status for monitor %d: %v", m.ID, err)

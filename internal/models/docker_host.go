@@ -64,7 +64,7 @@ func (s *DockerHostStore) Get(id int64) (*DockerHost, error) {
 
 // Create inserts a new DockerHost and returns its ID.
 func (s *DockerHostStore) Create(h *DockerHost) (int64, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	res, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO docker_hosts (name, socket_path, http_url, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?)
@@ -79,7 +79,7 @@ func (s *DockerHostStore) Create(h *DockerHost) (int64, error) {
 func (s *DockerHostStore) Update(h *DockerHost) error {
 	_, err := s.db.ExecContext(context.Background(), `
 		UPDATE docker_hosts SET name=?, socket_path=?, http_url=?, updated_at=? WHERE id=?
-	`, h.Name, h.SocketPath, h.HTTPURL, time.Now(), h.ID)
+	`, h.Name, h.SocketPath, h.HTTPURL, time.Now().UTC(), h.ID)
 	return err
 }
 

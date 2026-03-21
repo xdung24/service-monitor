@@ -75,7 +75,7 @@ func (s *APIKeyStore) Create(username, name, tokenHash string) (int64, error) {
 	res, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO api_keys (username, name, token_hash, created_at)
 		VALUES (?, ?, ?, ?)
-	`, username, name, tokenHash, time.Now())
+	`, username, name, tokenHash, time.Now().UTC())
 	if err != nil {
 		return 0, err
 	}
@@ -104,6 +104,6 @@ func (s *APIKeyStore) Verify(plainToken string) (string, error) {
 		return "", err
 	}
 	_, _ = s.db.ExecContext(context.Background(),
-		`UPDATE api_keys SET last_used_at=? WHERE id=?`, time.Now(), id)
+		`UPDATE api_keys SET last_used_at=? WHERE id=?`, time.Now().UTC(), id)
 	return username, nil
 }

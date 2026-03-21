@@ -144,6 +144,7 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 
 	// Public status page (unauthenticated)
 	r.GET("/status/:username/:slug", h.StatusPagePublic)
+	r.GET("/status/:username/:slug/chart-data/:id", h.StatusPagePublicChartData)
 
 	// Dashboard (protected)
 	auth := r.Group("/")
@@ -161,6 +162,7 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 		auth.POST("/monitors/:id/pause", h.MonitorPause)
 		auth.POST("/monitors/:id/resume", h.MonitorResume)
 		auth.GET("/monitors/:id/export", h.MonitorExport)
+		auth.GET("/monitors/:id/chart-data", h.MonitorChartData)
 		auth.POST("/monitors/import", h.MonitorImport)
 
 		// Notifications
