@@ -200,23 +200,26 @@
             <div class="nav-dropdown-menu">
                 <div style="padding:0.5rem 1rem 0.35rem; font-size:0.75rem; color:#64748b; word-break:break-all;">{{ .Username }}</div>
                 <hr class="nav-dropdown-divider">
-                <a href="/notifications">Noti Providers</a>
-                <a href="/tags">Tags</a>
-                <a href="/api-keys">API Keys</a>
-                <a href="/account/2fa">2FA</a>
+                <a href="/notifications">Notifications</a>
                 <a href="/maintenance">Maintenance</a>
                 <a href="/docker-hosts">Docker Hosts</a>
                 <a href="/proxies">Proxies</a>
+                <a href="/tags">Tags</a>
+                <hr class="nav-dropdown-divider">
+                <a href="/api-keys">API Keys</a>
+                <a href="/account/security">Security</a>
                 {{ if .IsAdmin }}
                 <hr class="nav-dropdown-divider">
                 <a href="/admin/users">Users</a>
-                <a href="/admin/settings">Admin Settings</a>
+                <a href="/admin/invites">Invites</a>
+                <a href="/admin/settings">Settings</a>
                 {{ end }}
+
                 <hr class="nav-dropdown-divider">
                 <a href="/docs">Docs</a>
                 <a href="https://github.com/xdung24/conductor" target="_blank" rel="noopener noreferrer">GitHub &#x2197;</a>
                 <hr class="nav-dropdown-divider">
-                <a href="/logout">Logout</a>
+                <a href="/logout" onclick="return confirm('Are you sure you want to log out?')">Logout</a>
             </div>
         </div>
         <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Open menu">&#9776;</button>

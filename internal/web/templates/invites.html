@@ -1,0 +1,95 @@
+{{ define "invites.html" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invites — Conductor</title>
+    {{ template "styles" . }}
+</head>
+<body>
+    {{ template "navbar" . }}
+    <div class="container">
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+    <h1 class="page-title" style="margin-bottom:0;">Invites</h1>
+    <a href="/admin/users" class="btn btn-ghost">← Users</a>
+</div>
+
+{{ if .Flash }}
+<div class="alert alert-success" style="word-break:break-all;">&#10003; {{ .Flash }}</div>
+{{ end }}
+{{ if .FlashError }}
+<div class="alert alert-danger">&#10007; {{ .FlashError }}</div>
+{{ end }}
+
+{{ if not .RegistrationEnabled }}
+<div class="alert" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24;">
+    &#9888; Open registration is <strong>disabled</strong>. New users can only join via invite link or admin creation.
+</div>
+{{ end }}
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <div style="margin-bottom:1rem;">
+        <h2 style="font-size:1rem; font-weight:600; margin:0; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Generate Invite Link</h2>
+    </div>
+    <form method="POST" action="/admin/users/invite" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+        <div class="form-group" style="flex:1; min-width:220px; margin-bottom:0;">
+            <label for="recipient_email" style="font-size:0.85rem; margin-bottom:0.3rem; display:block;">Recipient Email <span style="color:#f87171;">*</span></label>
+            <input class="form-control" type="email" id="recipient_email" name="recipient_email"
+                   placeholder="user@example.com" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="white-space:nowrap; margin-bottom:0.25rem;">&#128279; Generate Invite</button>
+    </form>
+</div>
+
+<div class="card" style="padding:0;">
+    <div style="padding:1rem 1.5rem 0.75rem; border-bottom:1px solid #334155;">
+        <h2 style="font-size:1rem; font-weight:600; margin:0; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">All Invite Links</h2>
+    </div>
+    {{ if .InviteTokens }}
+    <table>
+        <thead>
+            <tr>
+                <th>Token (first 12 chars)</th>
+                <th>Created By</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {{ range .InviteTokens }}
+        <tr>
+            <td style="font-family:monospace; font-size:0.85rem; color:#94a3b8;">{{ slice .Token 0 12 }}…</td>
+            <td style="font-size:0.875rem;">{{ .CreatedBy }}</td>
+            <td style="color:#94a3b8; font-size:0.875rem;">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
+            <td>
+                {{ if .Pending }}
+                <span class="badge badge-up">Pending</span>
+                {{ else }}
+                <span class="badge badge-unknown">Used</span>
+                {{ end }}
+            </td>
+            <td>
+                {{ if .Pending }}
+                <form method="POST" action="/admin/users/invites/{{ .Token }}/delete"
+                      onsubmit="return confirm('Revoke this invite link?')"
+                      style="display:inline;">
+                    <button class="btn btn-danger btn-sm">Revoke</button>
+                </form>
+                {{ end }}
+            </td>
+        </tr>
+        {{ end }}
+        </tbody>
+    </table>
+    {{ else }}
+    <p style="padding:1.5rem; color:#64748b; font-size:0.875rem;">No invite links have been generated yet.</p>
+    {{ end }}
+</div>
+
+    </div>
+</body>
+</html>
+{{ end }}

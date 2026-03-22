@@ -14,6 +14,7 @@
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
     <h1 class="page-title" style="margin-bottom:0;">Users</h1>
     <div style="display:flex; gap:0.5rem;">
+        <a href="/admin/invites" class="btn btn-ghost">&#128279; Invites</a>
         <a href="/admin/users/new" class="btn btn-primary">+ Add User</a>
     </div>
 </div>
@@ -23,71 +24,6 @@
 {{ end }}
 {{ if .FlashError }}
 <div class="alert alert-danger">&#10007; {{ .FlashError }}</div>
-{{ end }}
-
-{{ if not .RegistrationEnabled }}
-<div class="alert" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24;">
-    &#9888; Open registration is <strong>disabled</strong>. New users can only join via invite link or admin creation.
-</div>
-{{ end }}
-
-{{/* Invite-link generation */}}
-<div class="card" style="margin-bottom:1.5rem;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-        <h2 style="font-size:1rem; font-weight:600; margin:0; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Generate Invite Link</h2>
-    </div>
-    <form method="POST" action="/admin/users/invite" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
-        <div class="form-group" style="flex:1; min-width:220px; margin-bottom:0;">
-            <label for="recipient_email" style="font-size:0.85rem; margin-bottom:0.3rem; display:block;">Recipient Email <span style="color:#f87171;">*</span></label>
-            <input class="form-control" type="email" id="recipient_email" name="recipient_email"
-                   placeholder="user@example.com" required />
-        </div>
-        <button type="submit" class="btn btn-ghost btn-sm" style="white-space:nowrap; margin-bottom:0.25rem;">&#128279; Generate Invite</button>
-    </form>
-</div>
-
-{{ if .InviteTokens }}
-<div class="card" style="margin-bottom:1.5rem;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-        <h2 style="font-size:1rem; font-weight:600; margin:0; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Pending Invite Links</h2>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Token (first 12 chars)</th>
-                <th>Created By</th>
-                <th>Created</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        {{ range .InviteTokens }}
-        <tr>
-            <td style="font-family:monospace; font-size:0.85rem; color:#94a3b8;">{{ slice .Token 0 12 }}…</td>
-            <td style="font-size:0.875rem;">{{ .CreatedBy }}</td>
-            <td style="color:#94a3b8; font-size:0.875rem;">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
-            <td>
-                {{ if .Pending }}
-                <span class="badge badge-up">Pending</span>
-                {{ else }}
-                <span class="badge badge-unknown">Used</span>
-                {{ end }}
-            </td>
-            <td>
-                {{ if .Pending }}
-                <form method="POST" action="/admin/users/invites/{{ .Token }}/delete"
-                      onsubmit="return confirm('Revoke this invite link?')"
-                      style="display:inline;">
-                    <button class="btn btn-danger btn-sm">Revoke</button>
-                </form>
-                {{ end }}
-            </td>
-        </tr>
-        {{ end }}
-        </tbody>
-    </table>
-</div>
 {{ end }}
 
 {{/* Search bar */}}
@@ -142,10 +78,6 @@
         <td style="color:#94a3b8; font-size:0.875rem;">{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
         <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                <a href="/admin/users/{{ .Username }}/password"
-                   class="btn btn-ghost" style="padding:0.3rem 0.6rem; font-size:0.8rem;">
-                    Change Password
-                </a>
                 <form method="POST" action="/admin/users/{{ .Username }}/reset-link"
                       style="display:inline;">
                     <button class="btn btn-ghost" style="padding:0.3rem 0.6rem; font-size:0.8rem;">

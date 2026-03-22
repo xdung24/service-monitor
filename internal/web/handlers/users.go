@@ -37,19 +37,28 @@ func (h *Handler) UserList(c *gin.Context) {
 		totalPages = 1
 	}
 
-	inviteTokens, _ := h.regTokenStore().ListAll()
 	c.HTML(http.StatusOK, "users.html", gin.H{
-		"Users":               users,
-		"CurrentUser":         h.username(c),
+		"Users":       users,
+		"CurrentUser": h.username(c),
+		"IsAdmin":     h.isAdmin(c),
+		"Flash":       c.Query("flash"),
+		"FlashError":  c.Query("error"),
+		"Q":           q,
+		"Page":        page,
+		"TotalPages":  totalPages,
+		"Total":       total,
+	})
+}
+
+// InviteList renders the invite management page.
+func (h *Handler) InviteList(c *gin.Context) {
+	inviteTokens, _ := h.regTokenStore().ListAll()
+	c.HTML(http.StatusOK, "invites.html", gin.H{
 		"IsAdmin":             h.isAdmin(c),
 		"Flash":               c.Query("flash"),
 		"FlashError":          c.Query("error"),
 		"InviteTokens":        inviteTokens,
 		"RegistrationEnabled": h.settingsStore().RegistrationEnabled(),
-		"Q":                   q,
-		"Page":                page,
-		"TotalPages":          totalPages,
-		"Total":               total,
 	})
 }
 
@@ -126,68 +135,6 @@ func (h *Handler) UserCreate(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin/users?flash="+url.QueryEscape("User "+username+" created"))
 }
 
-// UserPasswordPage renders the change-password form for a user.
-func (h *Handler) UserPasswordPage(c *gin.Context) {
-	target := c.Param("username")
-	u, _ := h.users.GetByUsername(target)
-	if u == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "User not found"})
-		return
-	}
-	c.HTML(http.StatusOK, "user_form.html", gin.H{
-		"IsNew":      false,
-		"IsAdmin":    h.isAdmin(c),
-		"TargetUser": target,
-		"Error":      "",
-	})
-}
-
-// UserChangePassword handles the change-password form submission.
-func (h *Handler) UserChangePassword(c *gin.Context) {
-	target := c.Param("username")
-	password := c.PostForm("password")
-	confirm := c.PostForm("confirm_password")
-
-	renderErr := func(msg string) {
-		c.HTML(http.StatusBadRequest, "user_form.html", gin.H{
-			"IsNew": false, "TargetUser": target, "Error": msg,
-		})
-	}
-
-	if password == "" {
-		renderErr("Password is required")
-		return
-	}
-	if len(password) < 8 {
-		renderErr("Password must be at least 8 characters")
-		return
-	}
-	if password != confirm {
-		renderErr("Passwords do not match")
-		return
-	}
-
-	u, _ := h.users.GetByUsername(target)
-	if u == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "User not found"})
-		return
-	}
-
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		renderErr("Internal error")
-		return
-	}
-
-	if err := h.users.UpdatePassword(target, string(hashed)); err != nil {
-		renderErr("Failed to update password: " + err.Error())
-		return
-	}
-
-	h.mailer.SendAsync(target, "Your password has been changed", mailer.RenderPasswordChangedByAdmin())
-	c.Redirect(http.StatusFound, "/admin/users?flash="+url.QueryEscape("Password updated for "+target))
-}
-
 // InviteGenerate creates a single-use registration token and redirects to the
 // users page with the full invite URL shown as a flash message.
 // The recipient email is mandatory — it is used address the email (when the
@@ -195,17 +142,17 @@ func (h *Handler) UserChangePassword(c *gin.Context) {
 func (h *Handler) InviteGenerate(c *gin.Context) {
 	recipientEmail := c.PostForm("recipient_email")
 	if recipientEmail == "" {
-		c.Redirect(http.StatusFound, "/admin/users?error="+url.QueryEscape("Recipient email is required"))
+		c.Redirect(http.StatusFound, "/admin/invites?error="+url.QueryEscape("Recipient email is required"))
 		return
 	}
 	if _, err := validateEmail(recipientEmail); err != nil {
-		c.Redirect(http.StatusFound, "/admin/users?error="+url.QueryEscape("Invalid recipient email: "+err.Error()))
+		c.Redirect(http.StatusFound, "/admin/invites?error="+url.QueryEscape("Invalid recipient email: "+err.Error()))
 		return
 	}
 
 	token, err := h.regTokenStore().Generate(h.username(c), 0) // 0 = no expiry for admin invites
 	if err != nil {
-		c.Redirect(http.StatusFound, "/admin/users?error="+url.QueryEscape("Failed to generate invite: "+err.Error()))
+		c.Redirect(http.StatusFound, "/admin/invites?error="+url.QueryEscape("Failed to generate invite: "+err.Error()))
 		return
 	}
 
@@ -218,14 +165,14 @@ func (h *Handler) InviteGenerate(c *gin.Context) {
 	// Send invite email (fire-and-forget, no-op when SMTP is unconfigured).
 	h.mailer.SendAsync(recipientEmail, "You've been invited to Conductor", mailer.RenderInvite(inviteURL))
 
-	c.Redirect(http.StatusFound, "/admin/users?flash="+url.QueryEscape("Invite link for "+recipientEmail+" (copy and send manually): "+inviteURL))
+	c.Redirect(http.StatusFound, "/admin/invites?flash="+url.QueryEscape("Invite link for "+recipientEmail+" (copy and send manually): "+inviteURL))
 }
 
 // InviteRevoke deletes an invite token.
 func (h *Handler) InviteRevoke(c *gin.Context) {
 	token := c.Param("token")
 	_ = h.regTokenStore().Delete(token)
-	c.Redirect(http.StatusFound, "/admin/users?flash="+url.QueryEscape("Invite revoked"))
+	c.Redirect(http.StatusFound, "/admin/invites?flash="+url.QueryEscape("Invite revoked"))
 }
 
 // UserGenerateResetLink creates a 30-minute password-reset token and redirects

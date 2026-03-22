@@ -276,11 +276,14 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 		auth.POST("/api-keys", h.APIKeyCreate)
 		auth.POST("/api-keys/:id/delete", h.APIKeyDelete)
 
-		// Account — 2FA
-		auth.GET("/account/2fa", h.TwoFAPage)
+		// Account — Security (password + 2FA)
+		auth.GET("/account/security", h.SecurityPage)
 		auth.POST("/account/2fa/setup", h.TwoFASetupPage)
 		auth.POST("/account/2fa/verify", h.TwoFAVerify)
 		auth.POST("/account/2fa/disable", h.TwoFADisable)
+
+		// Account — Change Password
+		auth.POST("/account/password", h.AccountChangePassword)
 
 		// Documentation
 		auth.GET("/docs", h.DocsPage)
@@ -297,11 +300,10 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 		admin.GET("/admin/users", h.UserList)
 		admin.GET("/admin/users/new", h.UserNew)
 		admin.POST("/admin/users", h.UserCreate)
-		admin.GET("/admin/users/:username/password", h.UserPasswordPage)
-		admin.POST("/admin/users/:username/password", h.UserChangePassword)
 		admin.POST("/admin/users/:username/reset-link", h.UserGenerateResetLink)
 		admin.POST("/admin/users/:username/toggle-disabled", h.UserToggleDisabled)
 		admin.POST("/admin/users/:username/remove-2fa", h.UserRemove2FA)
+		admin.GET("/admin/invites", h.InviteList)
 		admin.POST("/admin/users/invite", h.InviteGenerate)
 		admin.POST("/admin/users/invites/:token/delete", h.InviteRevoke)
 
