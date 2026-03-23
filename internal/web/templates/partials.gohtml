@@ -177,10 +177,13 @@
         if (c) { var v = c.split('=')[1]; if (v) document.documentElement.setAttribute('data-theme', v); }
     })();
 </script>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 {{ end }}
 
 {{ define "navbar" }}
 <nav class="navbar">
+    <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Open menu">&#9776;</button>
     <a class="navbar-brand" href="/monitors">&#x2665; <span>Service</span>Conductor</a>
     <div class="navbar-actions" style="display:flex; gap:1rem; align-items:center;">
         <div class="nav-page-links" style="display:flex; gap:1.5rem; align-items:center;">
@@ -222,7 +225,6 @@
                 <a href="/logout" onclick="return confirm('Are you sure you want to log out?')">Logout</a>
             </div>
         </div>
-        <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Open menu">&#9776;</button>
     </div>
     <div class="nav-mobile-menu" id="nav-mobile-menu">
         <a href="/monitors">Monitors</a>

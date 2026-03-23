@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"html/template"
+	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -145,10 +147,24 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 		c.Next()
 	})
 
-	// Return an empty 404 for all unregistered routes — avoids leaking path
-	// information and prevents Gin's default plain-text body.
+	// Serve static assets embedded from the public/ directory at URL root.
+	// Files are served with content-types derived from their extension (Go's
+	// http.FileServer handles this automatically). Any path not found in the
+	// embedded FS is rendered as a 404 error page.
+	staticFS, _ := fs.Sub(publicFS, "public")
+	fileServer := http.FileServer(http.FS(staticFS))
 	r.NoRoute(func(c *gin.Context) {
-		c.Status(http.StatusNotFound)
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		path := strings.TrimPrefix(c.Request.URL.Path, "/")
+		if f, err := staticFS.Open(path); err == nil {
+			f.Close()
+			fileServer.ServeHTTP(c.Writer, c.Request)
+			return
+		}
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Page not found"})
 	})
 
 	h := handlers.New(usersDB, registry, msched, cfg, tmpl, m)
