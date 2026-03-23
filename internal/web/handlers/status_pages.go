@@ -76,10 +76,8 @@ func (h *Handler) StatusPageCreate(c *gin.Context) {
 		return
 	}
 
-	if page.SummaryUUID != "" {
-		// best-effort: register UUID in shared DB for public endpoint lookup
-		_ = h.users.RegisterSummaryToken(page.SummaryUUID, h.username(c))
-	}
+	// best-effort: register UUID in shared DB for public endpoint lookup
+	_ = h.users.RegisterSummaryToken(page.SummaryUUID, h.username(c))
 	_ = spStore.SetMonitors(id, monitorIDs)
 	c.Redirect(http.StatusFound, "/status-pages")
 }
@@ -168,14 +166,20 @@ const statusPageCacheTTL = 60 * time.Second
 // StatusPagePublic renders the unauthenticated public status page.
 // The rendered HTML is cached for statusPageCacheTTL to protect the DB from
 // repeated full-page loads (each page hit runs N×heartbeat queries).
-// Route: GET /status/:username/:slug
+// Route: GET /status/:uuid/:slug  (slug is decorative; lookup is by UUID)
 func (h *Handler) StatusPagePublic(c *gin.Context) {
-	username := c.Param("username")
-	slug := c.Param("slug")
+	uuid := c.Param("uuid")
 
-	cacheKey := "page\x00" + username + "\x00" + slug
+	cacheKey := "page\x00" + uuid
 	if cached, hit := h.pageCache.get(cacheKey); hit {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", cached)
+		return
+	}
+
+	// Resolve UUID → username via the shared users DB.
+	username, err := h.users.LookupSummaryToken(uuid)
+	if err != nil || username == "" {
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
 		return
 	}
 
@@ -186,7 +190,7 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 	}
 
 	spStore := models.NewStatusPageStore(db)
-	page, err := spStore.GetBySlug(slug)
+	page, err := spStore.GetBySummaryUUID(uuid)
 	if err != nil || page == nil {
 		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
 		return
@@ -234,8 +238,7 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 		"Monitors":       monitors,
 		"AllOperational": allOperational && len(monitors) > 0,
 		"Now":            now.Format("2006-01-02 15:04:05 UTC"),
-		"Username":       username,
-		"Slug":           slug,
+		"UUID":           uuid,
 	}
 
 	// Render into a buffer so we can cache the result.
@@ -252,14 +255,20 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 
 // StatusPagePublicChartData is a public JSON endpoint that returns heartbeat
 // history for a monitor, but only if it belongs to the given status page.
-// Route: GET /status/:username/:slug/chart-data/:id
+// Route: GET /status/:uuid/:slug/chart-data/:id  (slug is decorative; lookup is by UUID)
 func (h *Handler) StatusPagePublicChartData(c *gin.Context) {
-	username := c.Param("username")
-	slug := c.Param("slug")
+	uuid := c.Param("uuid")
 	idStr := c.Param("id")
 	monitorID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid monitor id"})
+		return
+	}
+
+	// Resolve UUID → username via the shared users DB.
+	username, err := h.users.LookupSummaryToken(uuid)
+	if err != nil || username == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 
@@ -271,7 +280,7 @@ func (h *Handler) StatusPagePublicChartData(c *gin.Context) {
 
 	// Verify the monitor is actually linked to this status page.
 	spStore := models.NewStatusPageStore(db)
-	page, err := spStore.GetBySlug(slug)
+	page, err := spStore.GetBySummaryUUID(uuid)
 	if err != nil || page == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -298,7 +307,7 @@ func (h *Handler) StatusPagePublicChartData(c *gin.Context) {
 
 	// Public callers get a cached response — protects the DB from flooding.
 	// Authenticated owners (MonitorChartData) bypass this endpoint entirely.
-	cacheKey := chartCacheKey(username, idStr, span)
+	cacheKey := chartCacheKey(uuid, idStr, span)
 	if cached, hit := h.chartCache.get(cacheKey); hit {
 		c.Data(http.StatusOK, "application/json; charset=utf-8", cached)
 		return
@@ -371,17 +380,11 @@ func statusPageFromForm(c *gin.Context) (*models.StatusPage, []int64, error) {
 	slug := c.PostForm("slug")
 	desc := c.PostForm("description")
 
-	// summary_enabled checkbox: present and "on" = enabled.
 	// summary_uuid hidden field carries the existing UUID when editing.
-	// A new UUID is generated when enabling for the first time.
-	summaryEnabled := c.PostForm("summary_enabled") == "on"
+	// Auto-generate a UUID on first save so every page has a stable public URL.
 	summaryUUID := c.PostForm("summary_uuid")
-	if summaryEnabled {
-		if summaryUUID == "" {
-			summaryUUID = generateUUID()
-		}
-	} else {
-		summaryUUID = ""
+	if summaryUUID == "" {
+		summaryUUID = generateUUID()
 	}
 
 	page := &models.StatusPage{Name: name, Slug: slug, Description: desc, SummaryUUID: summaryUUID}

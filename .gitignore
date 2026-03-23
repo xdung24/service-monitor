@@ -7,7 +7,6 @@ data/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 
 # OS
