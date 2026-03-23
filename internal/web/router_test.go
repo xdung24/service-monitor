@@ -10,7 +10,7 @@ import (
 // error or missing FuncMap entry will be caught here before a binary is
 // produced.
 func TestTemplatesParse(t *testing.T) {
-	_, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS, "templates/*.html")
+	_, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS, "templates/*.gohtml")
 	if err != nil {
 		t.Fatalf("template parse error: %v", err)
 	}

@@ -19,7 +19,7 @@ func (h *Handler) TagList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "tags.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "tags.gohtml", h.pageData(c, gin.H{
 		"Tags":  tags,
 		"Flash": flash,
 	}))
@@ -27,7 +27,7 @@ func (h *Handler) TagList(c *gin.Context) {
 
 // TagNew renders the create-tag form.
 func (h *Handler) TagNew(c *gin.Context) {
-	c.HTML(http.StatusOK, "tags.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "tags.gohtml", h.pageData(c, gin.H{
 		"Tags":    []*models.Tag{},
 		"NewForm": true,
 		"Tag":     &models.Tag{Color: "#6366f1"},
@@ -45,7 +45,7 @@ func (h *Handler) TagCreate(c *gin.Context) {
 
 	if name == "" {
 		tags, _ := h.tagStore(c).List()
-		c.HTML(http.StatusBadRequest, "tags.html", gin.H{
+		c.HTML(http.StatusBadRequest, "tags.gohtml", gin.H{
 			"Tags":    tags,
 			"NewForm": true,
 			"Tag":     &models.Tag{Name: name, Color: color},
@@ -57,7 +57,7 @@ func (h *Handler) TagCreate(c *gin.Context) {
 	_, err := h.tagStore(c).Create(&models.Tag{Name: name, Color: color})
 	if err != nil {
 		tags, _ := h.tagStore(c).List()
-		c.HTML(http.StatusInternalServerError, "tags.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "tags.gohtml", gin.H{
 			"Tags":    tags,
 			"NewForm": true,
 			"Tag":     &models.Tag{Name: name, Color: color},
@@ -77,7 +77,7 @@ func (h *Handler) TagEdit(c *gin.Context) {
 		return
 	}
 	tags, _ := h.tagStore(c).List()
-	c.HTML(http.StatusOK, "tags.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "tags.gohtml", h.pageData(c, gin.H{
 		"Tags":     tags,
 		"EditForm": true,
 		"Tag":      tag,
@@ -100,7 +100,7 @@ func (h *Handler) TagUpdate(c *gin.Context) {
 
 	if name == "" {
 		tags, _ := h.tagStore(c).List()
-		c.HTML(http.StatusBadRequest, "tags.html", gin.H{
+		c.HTML(http.StatusBadRequest, "tags.gohtml", gin.H{
 			"Tags":     tags,
 			"EditForm": true,
 			"Tag":      &models.Tag{ID: tag.ID, Name: name, Color: color},
@@ -113,7 +113,7 @@ func (h *Handler) TagUpdate(c *gin.Context) {
 	tag.Color = color
 	if err := h.tagStore(c).Update(tag); err != nil {
 		tags, _ := h.tagStore(c).List()
-		c.HTML(http.StatusInternalServerError, "tags.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "tags.gohtml", gin.H{
 			"Tags":     tags,
 			"EditForm": true,
 			"Tag":      tag,
@@ -133,7 +133,7 @@ func (h *Handler) TagDelete(c *gin.Context) {
 		return
 	}
 	if err := h.tagStore(c).Delete(tag.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.SetCookie("sm_flash", "Tag deleted", 5, "/", "", false, true)
@@ -145,12 +145,12 @@ func (h *Handler) getTag(c *gin.Context) (*models.Tag, bool) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "invalid tag id"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "invalid tag id"})
 		return nil, false
 	}
 	tag, err := h.tagStore(c).Get(id)
 	if err != nil || tag == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "tag not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "tag not found"})
 		return nil, false
 	}
 	return tag, true

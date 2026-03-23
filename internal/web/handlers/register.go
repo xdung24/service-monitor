@@ -22,13 +22,13 @@ func (h *Handler) settingsStore() *models.AppSettingsStore {
 func (h *Handler) RegisterPage(c *gin.Context) {
 	token := c.Query("token")
 	if !h.registrationAllowed(token) {
-		c.HTML(http.StatusForbidden, "register.html", gin.H{
+		c.HTML(http.StatusForbidden, "register.gohtml", gin.H{
 			"Disabled": true,
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "register.html", gin.H{
+	c.HTML(http.StatusOK, "register.gohtml", gin.H{
 		"Token":    token,
 		"Disabled": false,
 		"Error":    "",
@@ -39,7 +39,7 @@ func (h *Handler) RegisterPage(c *gin.Context) {
 func (h *Handler) RegisterSubmit(c *gin.Context) {
 	token := c.PostForm("token")
 	if !h.registrationAllowed(token) {
-		c.HTML(http.StatusForbidden, "register.html", gin.H{"Disabled": true})
+		c.HTML(http.StatusForbidden, "register.gohtml", gin.H{"Disabled": true})
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h *Handler) RegisterSubmit(c *gin.Context) {
 	confirm := c.PostForm("confirm_password")
 
 	renderErr := func(msg string) {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+		c.HTML(http.StatusBadRequest, "register.gohtml", gin.H{
 			"Token":    token,
 			"Disabled": false,
 			"Error":    msg,

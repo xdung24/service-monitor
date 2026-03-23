@@ -22,7 +22,7 @@ func (h *Handler) ProxyList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "proxies.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "proxies.gohtml", h.pageData(c, gin.H{
 		"Proxies": proxies,
 		"Flash":   flash,
 	}))
@@ -30,7 +30,7 @@ func (h *Handler) ProxyList(c *gin.Context) {
 
 // ProxyNew renders the create-proxy form.
 func (h *Handler) ProxyNew(c *gin.Context) {
-	c.HTML(http.StatusOK, "proxies.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "proxies.gohtml", h.pageData(c, gin.H{
 		"Proxies": []*models.Proxy{},
 		"NewForm": true,
 		"Proxy":   &models.Proxy{},
@@ -42,7 +42,7 @@ func (h *Handler) ProxyNew(c *gin.Context) {
 func (h *Handler) ProxyCreate(c *gin.Context) {
 	proxy, err := proxyFromForm(c)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "proxies.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "proxies.gohtml", h.pageData(c, gin.H{
 			"Proxies": []*models.Proxy{},
 			"NewForm": true,
 			"Proxy":   proxy,
@@ -52,7 +52,7 @@ func (h *Handler) ProxyCreate(c *gin.Context) {
 	}
 
 	if _, err := h.proxyStore(c).Create(proxy); err != nil {
-		c.HTML(http.StatusInternalServerError, "proxies.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "proxies.gohtml", h.pageData(c, gin.H{
 			"Proxies": []*models.Proxy{},
 			"NewForm": true,
 			"Proxy":   proxy,
@@ -71,7 +71,7 @@ func (h *Handler) ProxyEdit(c *gin.Context) {
 		return
 	}
 	proxies, _ := h.proxyStore(c).List()
-	c.HTML(http.StatusOK, "proxies.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "proxies.gohtml", h.pageData(c, gin.H{
 		"Proxies":   proxies,
 		"EditProxy": proxy,
 		"Error":     "",
@@ -87,7 +87,7 @@ func (h *Handler) ProxyUpdate(c *gin.Context) {
 	updated, err := proxyFromForm(c)
 	if err != nil {
 		proxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusBadRequest, "proxies.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "proxies.gohtml", h.pageData(c, gin.H{
 			"Proxies":   proxies,
 			"EditProxy": existing,
 			"Error":     err.Error(),
@@ -97,7 +97,7 @@ func (h *Handler) ProxyUpdate(c *gin.Context) {
 	updated.ID = existing.ID
 	if err := h.proxyStore(c).Update(updated); err != nil {
 		proxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusInternalServerError, "proxies.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "proxies.gohtml", h.pageData(c, gin.H{
 			"Proxies":   proxies,
 			"EditProxy": updated,
 			"Error":     err.Error(),
@@ -115,7 +115,7 @@ func (h *Handler) ProxyDelete(c *gin.Context) {
 		return
 	}
 	if err := h.proxyStore(c).Delete(proxy.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.SetCookie("sm_flash", "Proxy deleted", 5, "/", "", false, true)
@@ -126,12 +126,12 @@ func (h *Handler) getProxy(c *gin.Context) (*models.Proxy, bool) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "invalid proxy id"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "invalid proxy id"})
 		return nil, false
 	}
 	proxy, err := h.proxyStore(c).Get(id)
 	if err != nil || proxy == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "proxy not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "proxy not found"})
 		return nil, false
 	}
 	return proxy, true

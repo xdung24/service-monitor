@@ -29,7 +29,7 @@ func (h *Handler) UserList(c *gin.Context) {
 
 	users, total, err := h.users.ListPaged(q, page, userPageSize)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	totalPages := int(math.Ceil(float64(total) / float64(userPageSize)))
@@ -37,7 +37,7 @@ func (h *Handler) UserList(c *gin.Context) {
 		totalPages = 1
 	}
 
-	c.HTML(http.StatusOK, "users.html", gin.H{
+	c.HTML(http.StatusOK, "users.gohtml", gin.H{
 		"Users":       users,
 		"CurrentUser": h.username(c),
 		"IsAdmin":     h.isAdmin(c),
@@ -53,7 +53,7 @@ func (h *Handler) UserList(c *gin.Context) {
 // InviteList renders the invite management page.
 func (h *Handler) InviteList(c *gin.Context) {
 	inviteTokens, _ := h.regTokenStore().ListAll()
-	c.HTML(http.StatusOK, "invites.html", gin.H{
+	c.HTML(http.StatusOK, "invites.gohtml", gin.H{
 		"IsAdmin":             h.isAdmin(c),
 		"Flash":               c.Query("flash"),
 		"FlashError":          c.Query("error"),
@@ -64,7 +64,7 @@ func (h *Handler) InviteList(c *gin.Context) {
 
 // UserNew renders the create-user form.
 func (h *Handler) UserNew(c *gin.Context) {
-	c.HTML(http.StatusOK, "user_form.html", gin.H{
+	c.HTML(http.StatusOK, "user_form.gohtml", gin.H{
 		"IsNew":      true,
 		"IsAdmin":    h.isAdmin(c),
 		"TargetUser": "",
@@ -80,7 +80,7 @@ func (h *Handler) UserCreate(c *gin.Context) {
 	confirm := c.PostForm("confirm_password")
 
 	renderErr := func(msg string) {
-		c.HTML(http.StatusBadRequest, "user_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "user_form.gohtml", gin.H{
 			"IsNew": true, "TargetUser": "", "Username": username, "Error": msg,
 		})
 	}
@@ -112,14 +112,14 @@ func (h *Handler) UserCreate(c *gin.Context) {
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "user_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "user_form.gohtml", gin.H{
 			"IsNew": true, "TargetUser": "", "Username": username, "Error": "Internal error",
 		})
 		return
 	}
 
 	if err := h.users.Create(username, string(hashed)); err != nil {
-		c.HTML(http.StatusInternalServerError, "user_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "user_form.gohtml", gin.H{
 			"IsNew": true, "TargetUser": "", "Username": username,
 			"Error": "Failed to create user: " + err.Error(),
 		})
@@ -264,13 +264,13 @@ func (h *Handler) ResetPasswordPage(c *gin.Context) {
 	token := c.Query("token")
 	rt, err := h.pwResetStore().GetValid(token)
 	if err != nil || rt == nil {
-		c.HTML(http.StatusOK, "reset_password.html", gin.H{
+		c.HTML(http.StatusOK, "reset_password.gohtml", gin.H{
 			"Invalid": true,
 			"Error":   "",
 		})
 		return
 	}
-	c.HTML(http.StatusOK, "reset_password.html", gin.H{
+	c.HTML(http.StatusOK, "reset_password.gohtml", gin.H{
 		"Invalid":  false,
 		"Token":    token,
 		"Username": rt.Username,
@@ -285,7 +285,7 @@ func (h *Handler) ResetPasswordSubmit(c *gin.Context) {
 	confirm := c.PostForm("confirm_password")
 
 	renderErr := func(msg string) {
-		c.HTML(http.StatusBadRequest, "reset_password.html", gin.H{
+		c.HTML(http.StatusBadRequest, "reset_password.gohtml", gin.H{
 			"Invalid": false,
 			"Token":   token,
 			"Error":   msg,
@@ -294,7 +294,7 @@ func (h *Handler) ResetPasswordSubmit(c *gin.Context) {
 
 	rt, err := h.pwResetStore().GetValid(token)
 	if err != nil || rt == nil {
-		c.HTML(http.StatusOK, "reset_password.html", gin.H{"Invalid": true, "Error": ""})
+		c.HTML(http.StatusOK, "reset_password.gohtml", gin.H{"Invalid": true, "Error": ""})
 		return
 	}
 
@@ -328,7 +328,7 @@ func (h *Handler) ResetPasswordSubmit(c *gin.Context) {
 	// Notify the user that their password was changed via the reset link.
 	h.mailer.SendAsync(rt.Username, "Your password has been changed", mailer.RenderPasswordChangedByReset())
 
-	c.HTML(http.StatusOK, "reset_password.html", gin.H{
+	c.HTML(http.StatusOK, "reset_password.gohtml", gin.H{
 		"Invalid": false,
 		"Done":    true,
 		"Error":   "",

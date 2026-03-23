@@ -24,7 +24,7 @@ func (h *Handler) SecurityPage(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "account_security.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "account_security.gohtml", h.pageData(c, gin.H{
 		"TwoFAEnabled": twoFAEnabled,
 		"Flash":        flash,
 		"PwError":      "",
@@ -42,7 +42,7 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 		AccountName: username,
 	})
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false,
 			"Flash":        "",
 			"PwError":      "",
@@ -52,7 +52,7 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 	}
 
 	if err := h.users.SetTOTPSecret(username, key.Secret()); err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false,
 			"Flash":        "",
 			"PwError":      "",
@@ -65,14 +65,14 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 	// in the HTML without a separate image endpoint.
 	qrImg, err := key.Image(200, 200)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false, "Flash": "", "PwError": "", "TwoFAError": "Failed to generate QR code.",
 		}))
 		return
 	}
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, qrImg); err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false, "Flash": "", "PwError": "", "TwoFAError": "Failed to encode QR code.",
 		}))
 		return
@@ -80,7 +80,7 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 	// #nosec G203 -- data URI is entirely server-generated base64 PNG; no user input is interpolated.
 	qrDataURI := template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()))
 
-	c.HTML(http.StatusOK, "account_security.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "account_security.gohtml", h.pageData(c, gin.H{
 		"TwoFAEnabled": false,
 		"SetupMode":    true,
 		"QRDataURI":    qrDataURI,
@@ -99,7 +99,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 
 	secret, _, err := h.users.GetTOTP(username)
 	if err != nil || secret == "" {
-		c.HTML(http.StatusBadRequest, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false,
 			"Flash":        "",
 			"PwError":      "",
@@ -125,7 +125,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 			}
 		}
 
-		c.HTML(http.StatusUnauthorized, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusUnauthorized, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false,
 			"SetupMode":    true,
 			"QRDataURI":    qrDataURI,
@@ -138,7 +138,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 	}
 
 	if err := h.users.EnableTOTP(username); err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": false,
 			"Flash":        "",
 			"PwError":      "",
@@ -158,7 +158,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 func (h *Handler) TwoFADisable(c *gin.Context) {
 	username := h.username(c)
 	if err := h.users.DisableTOTP(username); err != nil {
-		c.HTML(http.StatusInternalServerError, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": true,
 			"Flash":        "",
 			"PwError":      "",
@@ -180,7 +180,7 @@ func (h *Handler) AccountChangePassword(c *gin.Context) {
 
 	renderErr := func(msg string) {
 		_, twoFAEnabled, _ := h.users.GetTOTP(username)
-		c.HTML(http.StatusBadRequest, "account_security.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "account_security.gohtml", h.pageData(c, gin.H{
 			"TwoFAEnabled": twoFAEnabled,
 			"Flash":        "",
 			"PwError":      msg,

@@ -20,7 +20,7 @@ func (h *Handler) MaintenanceList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "maintenance_list.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "maintenance_list.gohtml", h.pageData(c, gin.H{
 		"Windows": windows,
 		"Flash":   flash,
 	}))
@@ -29,7 +29,7 @@ func (h *Handler) MaintenanceList(c *gin.Context) {
 // MaintenanceNew renders the create form.
 func (h *Handler) MaintenanceNew(c *gin.Context) {
 	monitors, _ := h.monitorStore(c).List()
-	c.HTML(http.StatusOK, "maintenance_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "maintenance_form.gohtml", h.pageData(c, gin.H{
 		"Window":           &models.MaintenanceWindow{Active: true},
 		"IsNew":            true,
 		"AllMonitors":      monitors,
@@ -43,7 +43,7 @@ func (h *Handler) MaintenanceCreate(c *gin.Context) {
 	window, monitorIDs, err := maintenanceFromForm(c)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusBadRequest, "maintenance_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "maintenance_form.gohtml", gin.H{
 			"Window": window, "IsNew": true, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -54,7 +54,7 @@ func (h *Handler) MaintenanceCreate(c *gin.Context) {
 	id, err := mStore.Create(window)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusInternalServerError, "maintenance_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "maintenance_form.gohtml", gin.H{
 			"Window": window, "IsNew": true, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -79,7 +79,7 @@ func (h *Handler) MaintenanceEdit(c *gin.Context) {
 	for _, id := range linkedIDs {
 		linked[id] = true
 	}
-	c.HTML(http.StatusOK, "maintenance_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "maintenance_form.gohtml", h.pageData(c, gin.H{
 		"Window":           window,
 		"IsNew":            false,
 		"AllMonitors":      monitors,
@@ -97,7 +97,7 @@ func (h *Handler) MaintenanceUpdate(c *gin.Context) {
 	updated, monitorIDs, err := maintenanceFromForm(c)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusBadRequest, "maintenance_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "maintenance_form.gohtml", gin.H{
 			"Window": existing, "IsNew": false, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -108,7 +108,7 @@ func (h *Handler) MaintenanceUpdate(c *gin.Context) {
 	mStore := h.maintenanceStore(c)
 	if err := mStore.Update(updated); err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusInternalServerError, "maintenance_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "maintenance_form.gohtml", gin.H{
 			"Window": updated, "IsNew": false, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -126,7 +126,7 @@ func (h *Handler) MaintenanceDelete(c *gin.Context) {
 		return
 	}
 	if err := h.maintenanceStore(c).Delete(window.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.SetCookie("sm_flash", "Maintenance window deleted", 5, "/", "", false, true)
@@ -137,12 +137,12 @@ func (h *Handler) getMaintWindow(c *gin.Context) (*models.MaintenanceWindow, boo
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "invalid window id"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "invalid window id"})
 		return nil, false
 	}
 	w, err := h.maintenanceStore(c).Get(id)
 	if err != nil || w == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "maintenance window not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "maintenance window not found"})
 		return nil, false
 	}
 	return w, true

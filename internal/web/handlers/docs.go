@@ -30,7 +30,7 @@ func renderDocsMarkdown() template.HTML {
 
 // DocsPage renders the usage documentation page.
 func (h *Handler) DocsPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "docs.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "docs.gohtml", h.pageData(c, gin.H{
 		"Content": h.docsHTML,
 	}))
 }

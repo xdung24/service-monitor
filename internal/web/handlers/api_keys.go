@@ -19,7 +19,7 @@ func (h *Handler) APIKeyList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "api_keys.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "api_keys.gohtml", h.pageData(c, gin.H{
 		"Keys":  keys,
 		"Flash": flash,
 	}))
@@ -37,7 +37,7 @@ func (h *Handler) APIKeyCreate(c *gin.Context) {
 	plainToken, err := models.GenerateAPIToken()
 	if err != nil {
 		keys, _ := h.apiKeyStore().List(h.username(c))
-		c.HTML(http.StatusInternalServerError, "api_keys.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "api_keys.gohtml", gin.H{
 			"Keys":  keys,
 			"Error": "Failed to generate token. Please try again.",
 		})
@@ -47,7 +47,7 @@ func (h *Handler) APIKeyCreate(c *gin.Context) {
 	tokenHash := models.HashAPIToken(plainToken)
 	if _, err := h.apiKeyStore().Create(h.username(c), name, tokenHash); err != nil {
 		keys, _ := h.apiKeyStore().List(h.username(c))
-		c.HTML(http.StatusInternalServerError, "api_keys.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "api_keys.gohtml", gin.H{
 			"Keys":  keys,
 			"Error": "Failed to save key: " + err.Error(),
 		})
@@ -58,7 +58,7 @@ func (h *Handler) APIKeyCreate(c *gin.Context) {
 	// The token is embedded directly in the HTML response — it is never stored
 	// server-side again after this point.
 	keys, _ := h.apiKeyStore().List(h.username(c))
-	c.HTML(http.StatusOK, "api_keys.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "api_keys.gohtml", h.pageData(c, gin.H{
 		"Keys":     keys,
 		"Flash":    "API key created. Copy the token below — it won\u2019t be shown again.",
 		"NewToken": plainToken,

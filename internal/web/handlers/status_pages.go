@@ -35,7 +35,7 @@ func (h *Handler) StatusPageList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "status_page_list.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "status_page_list.gohtml", h.pageData(c, gin.H{
 		"Pages": pages,
 		"Flash": flash,
 	}))
@@ -44,7 +44,7 @@ func (h *Handler) StatusPageList(c *gin.Context) {
 // StatusPageNew renders the create form.
 func (h *Handler) StatusPageNew(c *gin.Context) {
 	monitors, _ := h.monitorStore(c).List()
-	c.HTML(http.StatusOK, "status_page_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "status_page_form.gohtml", h.pageData(c, gin.H{
 		"Page":             &models.StatusPage{},
 		"IsNew":            true,
 		"AllMonitors":      monitors,
@@ -58,7 +58,7 @@ func (h *Handler) StatusPageCreate(c *gin.Context) {
 	page, monitorIDs, err := statusPageFromForm(c)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusBadRequest, "status_page_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "status_page_form.gohtml", gin.H{
 			"Page": page, "IsNew": true, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -69,7 +69,7 @@ func (h *Handler) StatusPageCreate(c *gin.Context) {
 	id, err := spStore.Create(page)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusInternalServerError, "status_page_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "status_page_form.gohtml", gin.H{
 			"Page": page, "IsNew": true, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -97,7 +97,7 @@ func (h *Handler) StatusPageEdit(c *gin.Context) {
 	for _, id := range linkedIDs {
 		linked[id] = true
 	}
-	c.HTML(http.StatusOK, "status_page_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "status_page_form.gohtml", h.pageData(c, gin.H{
 		"Page":             page,
 		"IsNew":            false,
 		"AllMonitors":      monitors,
@@ -115,7 +115,7 @@ func (h *Handler) StatusPageUpdate(c *gin.Context) {
 	updated, monitorIDs, err := statusPageFromForm(c)
 	if err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusBadRequest, "status_page_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "status_page_form.gohtml", gin.H{
 			"Page": existing, "IsNew": false, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -126,7 +126,7 @@ func (h *Handler) StatusPageUpdate(c *gin.Context) {
 	spStore := h.statusPageStore(c)
 	if err := spStore.Update(updated); err != nil {
 		monitors, _ := h.monitorStore(c).List()
-		c.HTML(http.StatusInternalServerError, "status_page_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "status_page_form.gohtml", gin.H{
 			"Page": updated, "IsNew": false, "AllMonitors": monitors,
 			"LinkedMonitorIDs": map[int64]bool{}, "Error": err.Error(),
 		})
@@ -156,7 +156,7 @@ func (h *Handler) StatusPageDelete(c *gin.Context) {
 		_ = h.users.UnregisterSummaryToken(page.SummaryUUID)
 	}
 	if err := h.statusPageStore(c).Delete(page.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.Redirect(http.StatusFound, "/status-pages")
@@ -181,14 +181,14 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 
 	db, err := h.registry.Get(username)
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "Status page not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
 		return
 	}
 
 	spStore := models.NewStatusPageStore(db)
 	page, err := spStore.GetBySlug(slug)
 	if err != nil || page == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "Status page not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
 		return
 	}
 
@@ -240,9 +240,9 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 
 	// Render into a buffer so we can cache the result.
 	var buf bytes.Buffer
-	if err := h.tmpl.ExecuteTemplate(&buf, "status_page_public.html", templateData); err != nil {
+	if err := h.tmpl.ExecuteTemplate(&buf, "status_page_public.gohtml", templateData); err != nil {
 		// Template error — fall back to direct render (won't cache).
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	rendered := buf.Bytes()
@@ -354,12 +354,12 @@ func (h *Handler) getStatusPage(c *gin.Context) (*models.StatusPage, bool) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "invalid status page id"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "invalid status page id"})
 		return nil, false
 	}
 	page, err := h.statusPageStore(c).Get(id)
 	if err != nil || page == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "status page not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "status page not found"})
 		return nil, false
 	}
 	return page, true

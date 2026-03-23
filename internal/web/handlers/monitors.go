@@ -21,7 +21,7 @@ func (h *Handler) MonitorNew(c *gin.Context) {
 	allTags, _ := h.tagStore(c).List()
 	allDockerHosts, _ := h.dockerHostStore(c).List()
 	allProxies, _ := h.proxyStore(c).List()
-	c.HTML(http.StatusOK, "monitor_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "monitor_form.gohtml", h.pageData(c, gin.H{
 		"Monitor":        &models.Monitor{IntervalSeconds: 60, TimeoutSeconds: 30, Retries: 1, NotifyOnFailure: true, NotifyOnSuccess: true},
 		"IsNew":          true,
 		"Error":          "",
@@ -43,7 +43,7 @@ func (h *Handler) MonitorCreate(c *gin.Context) {
 		allTags, _ := h.tagStore(c).List()
 		allDockerHosts, _ := h.dockerHostStore(c).List()
 		allProxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusBadRequest, "monitor_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "monitor_form.gohtml", gin.H{
 			"Monitor": m, "IsNew": true, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
 			"NotifSummaries": notifSummaryMap(allNotifs),
@@ -65,7 +65,7 @@ func (h *Handler) MonitorCreate(c *gin.Context) {
 		allTags, _ := h.tagStore(c).List()
 		allDockerHosts, _ := h.dockerHostStore(c).List()
 		allProxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusInternalServerError, "monitor_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "monitor_form.gohtml", gin.H{
 			"Monitor": m, "IsNew": true, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
 			"NotifSummaries": notifSummaryMap(allNotifs),
@@ -102,7 +102,7 @@ func (h *Handler) MonitorDetail(c *gin.Context) {
 	uptime24h, _ := bstore.UptimePercent(m.ID, time.Now().Add(-24*time.Hour))
 	uptime30d, _ := bstore.UptimePercent(m.ID, time.Now().Add(-30*24*time.Hour))
 
-	c.HTML(http.StatusOK, "monitor_detail.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "monitor_detail.gohtml", h.pageData(c, gin.H{
 		"Monitor":   m,
 		"Beats":     beats,
 		"Uptime24h": uptime24h,
@@ -132,7 +132,7 @@ func (h *Handler) MonitorEdit(c *gin.Context) {
 	}
 	allDockerHosts, _ := h.dockerHostStore(c).List()
 	allProxies, _ := h.proxyStore(c).List()
-	c.HTML(http.StatusOK, "monitor_form.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "monitor_form.gohtml", h.pageData(c, gin.H{
 		"Monitor":        m,
 		"IsNew":          false,
 		"Error":          "",
@@ -170,7 +170,7 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 		}
 		allDockerHosts, _ := h.dockerHostStore(c).List()
 		allProxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusBadRequest, "monitor_form.html", gin.H{
+		c.HTML(http.StatusBadRequest, "monitor_form.gohtml", gin.H{
 			"Monitor": m, "IsNew": false, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": linkedIDs,
 			"NotifSummaries": notifSummaryMap(allNotifs),
@@ -201,7 +201,7 @@ func (h *Handler) MonitorUpdate(c *gin.Context) {
 		allTags, _ := h.tagStore(c).List()
 		allDockerHosts, _ := h.dockerHostStore(c).List()
 		allProxies, _ := h.proxyStore(c).List()
-		c.HTML(http.StatusInternalServerError, "monitor_form.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "monitor_form.gohtml", gin.H{
 			"Monitor": updated, "IsNew": false, "Error": err.Error(),
 			"AllNotifs": allNotifs, "LinkedNotifIDs": map[int64]bool{},
 			"NotifSummaries": notifSummaryMap(allNotifs),
@@ -299,7 +299,7 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "Failed to encode monitor"})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": "Failed to encode monitor"})
 		return
 	}
 
@@ -313,14 +313,14 @@ func (h *Handler) MonitorExport(c *gin.Context) {
 func (h *Handler) MonitorImport(c *gin.Context) {
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "No file uploaded"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "No file uploaded"})
 		return
 	}
 	defer file.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(file, 1<<20)) // 1 MB max
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Failed to read file"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "Failed to read file"})
 		return
 	}
 
@@ -361,11 +361,11 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 
 	var doc importDoc
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Invalid JSON: " + err.Error()})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "Invalid JSON: " + err.Error()})
 		return
 	}
 	if doc.Name == "" || doc.URL == "" {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Imported file is missing required fields: name, url"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "Imported file is missing required fields: name, url"})
 		return
 	}
 	if doc.IntervalSeconds < 20 {
@@ -416,7 +416,7 @@ func (h *Handler) MonitorImport(c *gin.Context) {
 
 	id, err := h.monitorStore(c).Create(m)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "Failed to save monitor: " + err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": "Failed to save monitor: " + err.Error()})
 		return
 	}
 	c.Redirect(http.StatusFound, fmt.Sprintf("/monitors/%d/edit", id))
@@ -477,7 +477,7 @@ func (h *Handler) MonitorDelete(c *gin.Context) {
 	}
 	h.schedFor(c).Unschedule(m.ID)
 	if err := h.monitorStore(c).Delete(m.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.Redirect(http.StatusFound, "/")
@@ -490,7 +490,7 @@ func (h *Handler) MonitorPause(c *gin.Context) {
 		return
 	}
 	if err := h.monitorStore(c).SetActive(m.ID, false); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	h.schedFor(c).Unschedule(m.ID)
@@ -504,7 +504,7 @@ func (h *Handler) MonitorResume(c *gin.Context) {
 		return
 	}
 	if err := h.monitorStore(c).SetActive(m.ID, true); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	m.Active = true
@@ -520,13 +520,13 @@ func (h *Handler) getMonitor(c *gin.Context) (*models.Monitor, bool) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "Invalid monitor ID"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "Invalid monitor ID"})
 		return nil, false
 	}
 
 	m, err := h.monitorStore(c).Get(id)
 	if err != nil || m == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "Monitor not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Monitor not found"})
 		return nil, false
 	}
 	return m, true

@@ -104,7 +104,7 @@ func templateFuncMap() template.FuncMap {
 }
 
 func mustParseTemplates() *template.Template {
-	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS, "templates/*.html")
+	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(templateFS, "templates/*.gohtml")
 	if err != nil {
 		panic(err)
 	}

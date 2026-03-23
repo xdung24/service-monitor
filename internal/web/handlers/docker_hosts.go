@@ -21,7 +21,7 @@ func (h *Handler) DockerHostList(c *gin.Context) {
 	if flash != "" {
 		c.SetCookie("sm_flash", "", -1, "/", "", false, true)
 	}
-	c.HTML(http.StatusOK, "docker_hosts.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "docker_hosts.gohtml", h.pageData(c, gin.H{
 		"Hosts": hosts,
 		"Flash": flash,
 	}))
@@ -29,7 +29,7 @@ func (h *Handler) DockerHostList(c *gin.Context) {
 
 // DockerHostNew renders the create-host form.
 func (h *Handler) DockerHostNew(c *gin.Context) {
-	c.HTML(http.StatusOK, "docker_hosts.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "docker_hosts.gohtml", h.pageData(c, gin.H{
 		"Hosts":   []*models.DockerHost{},
 		"NewForm": true,
 		"Host":    &models.DockerHost{},
@@ -41,7 +41,7 @@ func (h *Handler) DockerHostNew(c *gin.Context) {
 func (h *Handler) DockerHostCreate(c *gin.Context) {
 	host, err := dockerHostFromForm(c)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "docker_hosts.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "docker_hosts.gohtml", h.pageData(c, gin.H{
 			"Hosts":   []*models.DockerHost{},
 			"NewForm": true,
 			"Host":    host,
@@ -51,7 +51,7 @@ func (h *Handler) DockerHostCreate(c *gin.Context) {
 	}
 
 	if _, err := h.dockerHostStore(c).Create(host); err != nil {
-		c.HTML(http.StatusInternalServerError, "docker_hosts.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "docker_hosts.gohtml", h.pageData(c, gin.H{
 			"Hosts":   []*models.DockerHost{},
 			"NewForm": true,
 			"Host":    host,
@@ -70,7 +70,7 @@ func (h *Handler) DockerHostEdit(c *gin.Context) {
 		return
 	}
 	hosts, _ := h.dockerHostStore(c).List()
-	c.HTML(http.StatusOK, "docker_hosts.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "docker_hosts.gohtml", h.pageData(c, gin.H{
 		"Hosts":    hosts,
 		"EditHost": host,
 		"Error":    "",
@@ -86,7 +86,7 @@ func (h *Handler) DockerHostUpdate(c *gin.Context) {
 	updated, err := dockerHostFromForm(c)
 	if err != nil {
 		hosts, _ := h.dockerHostStore(c).List()
-		c.HTML(http.StatusBadRequest, "docker_hosts.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusBadRequest, "docker_hosts.gohtml", h.pageData(c, gin.H{
 			"Hosts":    hosts,
 			"EditHost": existing,
 			"Error":    err.Error(),
@@ -96,7 +96,7 @@ func (h *Handler) DockerHostUpdate(c *gin.Context) {
 	updated.ID = existing.ID
 	if err := h.dockerHostStore(c).Update(updated); err != nil {
 		hosts, _ := h.dockerHostStore(c).List()
-		c.HTML(http.StatusInternalServerError, "docker_hosts.html", h.pageData(c, gin.H{
+		c.HTML(http.StatusInternalServerError, "docker_hosts.gohtml", h.pageData(c, gin.H{
 			"Hosts":    hosts,
 			"EditHost": updated,
 			"Error":    err.Error(),
@@ -114,7 +114,7 @@ func (h *Handler) DockerHostDelete(c *gin.Context) {
 		return
 	}
 	if err := h.dockerHostStore(c).Delete(host.ID); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 	c.SetCookie("sm_flash", "Docker host deleted", 5, "/", "", false, true)
@@ -125,12 +125,12 @@ func (h *Handler) getDockerHost(c *gin.Context) (*models.DockerHost, bool) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"Error": "invalid docker host id"})
+		c.HTML(http.StatusBadRequest, "error.gohtml", gin.H{"Error": "invalid docker host id"})
 		return nil, false
 	}
 	host, err := h.dockerHostStore(c).Get(id)
 	if err != nil || host == nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"Error": "docker host not found"})
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "docker host not found"})
 		return nil, false
 	}
 	return host, true

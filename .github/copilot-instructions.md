@@ -39,7 +39,7 @@ internal/
   notifier/              Notification providers (Slack, Discord, ntfy, Telegram, Email, Webhook)
   web/
     router.go            Gin router setup + embedded template loading
-    embed.go             //go:embed directive for templates/*.html
+    embed.go             //go:embed directive for templates/*.gohtml
     router_test.go       Single TestTemplatesParse test (parses all templates)
     handlers/
       dashboard.go       Auth middleware, setup/login/logout, dashboard, per-request context helpers
@@ -55,29 +55,29 @@ internal/
       tags.go            Tag CRUD handlers
       auth_token.go      HMAC token sign/verify
     templates/           HTML templates (SSR, dark theme)
-      partials.html      Shared CSS (styles) and navbar defines
-      dashboard.html     Monitor list page
-      monitor_form.html  Create/edit monitor form
-      monitor_detail.html Monitor heartbeat history
-      notification_list.html  Notification providers list
-      notification_form.html  Create/edit notification form
-      notification_log.html   Notification send history
-      users.html         User management list page
-      user_form.html     Create user / change password form
-      account_2fa.html   2FA status + TOTP setup QR code page
-      admin_settings.html Admin settings page (registration enable/disable)
-      api_keys.html      API key list/create/delete page
-      login.html         Login page
-      login_2fa.html     TOTP second-factor prompt
-      maintenance_form.html  Create/edit maintenance window form
-      maintenance_list.html  Maintenance windows list
-      register.html      Public self-registration / invite-token page
-      setup.html         First-run setup wizard
-      status_page_form.html  Create/edit status page form
-      status_page_list.html  Status pages management list
-      status_page_public.html Public read-only status page at /status/:username/:slug
-      tags.html          Tag management page (list + inline create form)
-      error.html         Error page
+      partials.gohtml      Shared CSS (styles) and navbar defines
+      dashboard.gohtml     Monitor list page
+      monitor_form.gohtml  Create/edit monitor form
+      monitor_detail.gohtml Monitor heartbeat history
+      notification_list.gohtml  Notification providers list
+      notification_form.gohtml  Create/edit notification form
+      notification_log.gohtml   Notification send history
+      users.gohtml         User management list page
+      user_form.gohtml     Create user / change password form
+      account_2fa.gohtml   2FA status + TOTP setup QR code page
+      admin_settings.gohtml Admin settings page (registration enable/disable)
+      api_keys.gohtml      API key list/create/delete page
+      login.gohtml         Login page
+      login_2fa.gohtml     TOTP second-factor prompt
+      maintenance_form.gohtml  Create/edit maintenance window form
+      maintenance_list.gohtml  Maintenance windows list
+      register.gohtml      Public self-registration / invite-token page
+      setup.gohtml         First-run setup wizard
+      status_page_form.gohtml  Create/edit status page form
+      status_page_list.gohtml  Status pages management list
+      status_page_public.gohtml Public read-only status page at /status/:username/:slug
+      tags.gohtml          Tag management page (list + inline create form)
+      error.gohtml         Error page
 Dockerfile               Multi-stage, non-root, alpine-based
 compose.yaml             Docker Compose
 Makefile                 build, run, dev, test, lint, clean, docker-build
@@ -140,7 +140,7 @@ All datetimes are stored and transmitted in **UTC** throughout the stack. Follow
 - **Error handling**: always wrap errors with `fmt.Errorf("context: %w", err)`
 - **Error checking**: always check every error return value — never discard with `_` unless the call genuinely cannot fail or the error is intentionally ignored (document why with a comment). This applies to all store methods (`Create`, `Update`, `Delete`, `SetActive`, etc.) and any other function that returns an `error`.
 - **No CGO**: all dependencies must be pure Go (no CGO required)
-- **Templates**: each page is a `{{ define "filename.html" }}` block in its own file, pulling in `{{ template "styles" }}` and `{{ template "navbar" }}` from `partials.html`
+- **Templates**: each page is a `{{ define "filename.gohtml" }}` block in its own file, pulling in `{{ template "styles" }}` and `{{ template "navbar" }}` from `partials.gohtml`
 - **SQL migrations**: filename format `NNNN_description.up.sql` / `NNNN_description.down.sql`; embedded via `//go:embed` in `database.go`
 - **Never edit existing migration files** — always add a new numbered migration
 - **Database context (noctx)**: never call `(*sql.DB).Exec`, `(*sql.DB).Query`, or `(*sql.DB).QueryRow` directly — always use the `Context` variants (`ExecContext`, `QueryContext`, `QueryRowContext`) passing `context.Background()` at minimum
@@ -148,13 +148,13 @@ All datetimes are stored and transmitted in **UTC** throughout the stack. Follow
 ## Web UI Conventions
 
 ### Template data contract
-Every protected page is rendered via `c.HTML(status, "page.html", h.pageData(c, gin.H{...}))`.
+Every protected page is rendered via `c.gohtml(status, "page.gohtml", h.pageData(c, gin.H{...}))`.
 
 `pageData()` merges the caller-supplied map with exactly **one** common key:
 - `IsAdmin bool` — `true` when the logged-in user has the admin role.
 
 There is **no** `Username` or `Theme` key in the template data.  The theme is read from the
-`sm_theme` cookie by a tiny inline `<script>` inside `{{ define "styles" }}` in `partials.html`,
+`sm_theme` cookie by a tiny inline `<script>` inside `{{ define "styles" }}` in `partials.gohtml`,
 which sets `data-theme` on `<html>`.  Usernames are stored only in the Gin context (key
 `"sm_username"`), not passed to templates.
 
@@ -165,24 +165,24 @@ Common keys used by individual pages (set by the handler, not by `pageData`):
 
 | Template | Extra keys |
 |---|---|
-| `monitor_form.html` | `Monitor *models.Monitor`, `IsNew bool`, `Error string`, `AllNotifs`, `LinkedNotifIDs`, `NotifSummaries`, `AllTags`, `LinkedTagIDs` |
-| `notification_form.html` | `Notif *models.Notification`, `IsNew bool`, `Error string` |
-| `dashboard.html` | `Monitors []models.Monitor`, `Stats` |
-| `users.html` | `Users []models.User`, `CurrentUser string` |
-| `account_2fa.html` | `Enabled bool`, `Flash string`, `Error string`; optionally `SetupMode bool`, `QRDataURI template.URL`, `TOTPSecret string` |
-| `admin_settings.html` | `Flash string`, `Error string`, `RegistrationEnabled bool` |
-| `api_keys.html` | `Keys []models.APIKey`, `Flash string`; optionally `NewToken string` (shown once after creation) |
-| `maintenance_form.html` | `Window *models.MaintenanceWindow`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
-| `maintenance_list.html` | `Windows []models.MaintenanceWindow`, `Flash string` |
-| `register.html` | `Token string`, `Disabled bool`, `Error string` |
-| `status_page_form.html` | `Page *models.StatusPage`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
-| `status_page_list.html` | `Pages []models.StatusPage`, `Flash string` |
-| `tags.html` | `Tags []*models.Tag`, `Flash string`; optionally `NewForm bool`, `Tag *models.Tag`, `Error string` |
+| `monitor_form.gohtml` | `Monitor *models.Monitor`, `IsNew bool`, `Error string`, `AllNotifs`, `LinkedNotifIDs`, `NotifSummaries`, `AllTags`, `LinkedTagIDs` |
+| `notification_form.gohtml` | `Notif *models.Notification`, `IsNew bool`, `Error string` |
+| `dashboard.gohtml` | `Monitors []models.Monitor`, `Stats` |
+| `users.gohtml` | `Users []models.User`, `CurrentUser string` |
+| `account_2fa.gohtml` | `Enabled bool`, `Flash string`, `Error string`; optionally `SetupMode bool`, `QRDataURI template.URL`, `TOTPSecret string` |
+| `admin_settings.gohtml` | `Flash string`, `Error string`, `RegistrationEnabled bool` |
+| `api_keys.gohtml` | `Keys []models.APIKey`, `Flash string`; optionally `NewToken string` (shown once after creation) |
+| `maintenance_form.gohtml` | `Window *models.MaintenanceWindow`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
+| `maintenance_list.gohtml` | `Windows []models.MaintenanceWindow`, `Flash string` |
+| `register.gohtml` | `Token string`, `Disabled bool`, `Error string` |
+| `status_page_form.gohtml` | `Page *models.StatusPage`, `IsNew bool`, `AllMonitors []models.Monitor`, `LinkedMonitorIDs map[int64]bool`, `Error string` |
+| `status_page_list.gohtml` | `Pages []models.StatusPage`, `Flash string` |
+| `tags.gohtml` | `Tags []*models.Tag`, `Flash string`; optionally `NewForm bool`, `Tag *models.Tag`, `Error string` |
 
 ### Dual-theme CSS
 The dark theme is the base.  Every new CSS rule that is colour- or background-sensitive
 **must** have a `[data-theme="light"]` override added in the same `{{ define "styles" }}`
-block (in `partials.html` for shared classes, or in the page template for page-specific ones).
+block (in `partials.gohtml` for shared classes, or in the page template for page-specific ones).
 
 ```css
 /* dark (base) */
@@ -202,7 +202,7 @@ Fields specific to one monitor type live in a `<div id="TYPE-fields" ...>` with 
 ```
 
 After adding the div, add a corresponding line to `toggleTypeFields()` at the bottom of
-`monitor_form.html`:
+`monitor_form.gohtml`:
 
 ```js
 document.getElementById('foo-fields').style.display = (t === 'foo') ? 'block' : 'none';
@@ -212,7 +212,7 @@ If the new type has no URL/address field, also add it to the `noURL` list in the
 function so the shared URL input is hidden.
 
 ### Notification-provider field show/hide pattern
-Same idea, but in `notification_form.html` using `showFields(type)`.  Each provider's
+Same idea, but in `notification_form.gohtml` using `showFields(type)`.  Each provider's
 fields are in a `<div id="fields-PROVIDER">` and toggled by adding a `case` to the switch
 inside `showFields()`.
 
@@ -229,7 +229,7 @@ fails to parse, so issues are caught before serving any request.
 
 ### General HTML/template rules
 - Always use `html/template` (auto-escaping).  Never use `text/template` for HTML output.
-- Each page template must `{{ define "filename.html" }}` and call
+- Each page template must `{{ define "filename.gohtml" }}` and call
   `{{ template "styles" . }}` and `{{ template "navbar" . }}`.
 - For user-supplied content embedded in JS strings, use `{{ .Value | js }}`.
 
@@ -251,7 +251,7 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 3. Update the `Monitor` struct in `internal/models/models.go` with the new field(s)
 4. Implement `Checker` interface in a new `internal/monitor/checker_<type>.go` file
 5. Register it in `checkerFor()` switch in `checker.go`
-6. Add the `<option>` to `monitor_form.html`; add any type-specific form fields with JS show/hide
+6. Add the `<option>` to `monitor_form.gohtml`; add any type-specific form fields with JS show/hide
 7. Update `monitorFromForm()` in `internal/web/handlers/monitors.go` to parse the new fields; update export/import structs too
 8. Add a sample import file `examples/monitor-<type>.json` covering the new type's key fields
 9. Mark the feature `✅ Done` in `FEATURES.md`
@@ -260,7 +260,7 @@ All planned, in-progress, and completed features are tracked in **`FEATURES.md`*
 
 1. Create `internal/notifier/foo.go` implementing the `Provider` interface
 2. Register it in `internal/notifier/notifier.go` (`Registry["foo"] = FooProvider{}`)
-3. Add a fieldset to `notification_form.html` and toggle it in the existing `showFields()` JS
+3. Add a fieldset to `notification_form.gohtml` and toggle it in the existing `showFields()` JS
 4. Mark the feature `✅ Done` in `FEATURES.md`
 
 ## User Management Routes

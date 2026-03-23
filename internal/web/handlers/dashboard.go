@@ -110,7 +110,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 
 	monitors, err := mstore.List()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": err.Error()})
+		c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": err.Error()})
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		sparklines[m.ID] = computeSparklineSVG(beats)
 	}
 
-	c.HTML(http.StatusOK, "dashboard.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "dashboard.gohtml", h.pageData(c, gin.H{
 		"Monitors":   monitors,
 		"Sparklines": sparklines,
 		"Tags":       tagMap,

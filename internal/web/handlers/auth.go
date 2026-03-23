@@ -63,7 +63,7 @@ func (h *Handler) AuthRequired() gin.HandlerFunc {
 		username, _ := verifyToken(cookie, h.cfg.SecretKey)
 		db, err := h.registry.Get(username)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"Error": "failed to open user database"})
+			c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": "failed to open user database"})
 			c.Abort()
 			return
 		}
@@ -85,7 +85,7 @@ func (h *Handler) AuthRequired() gin.HandlerFunc {
 func (h *Handler) AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !c.GetBool(ctxKeyIsAdmin) {
-			c.HTML(http.StatusForbidden, "error.html", gin.H{"Error": "Admin access required"})
+			c.HTML(http.StatusForbidden, "error.gohtml", gin.H{"Error": "Admin access required"})
 			c.Abort()
 			return
 		}
@@ -116,7 +116,7 @@ func (h *Handler) validSession(token string) bool {
 // console-printed setup URL.
 func (h *Handler) LoginPage(c *gin.Context) {
 	count, _ := h.users.Count()
-	c.HTML(http.StatusOK, "login.html", gin.H{
+	c.HTML(http.StatusOK, "login.gohtml", gin.H{
 		"Error":     "",
 		"SetupMode": count == 0,
 	})
@@ -131,17 +131,17 @@ func (h *Handler) LoginSubmit(c *gin.Context) {
 
 	u, err := h.users.GetByUsername(username)
 	if err != nil || u == nil {
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{"Error": "Invalid username or password"})
+		c.HTML(http.StatusUnauthorized, "login.gohtml", gin.H{"Error": "Invalid username or password"})
 		return
 	}
 
 	if u.Disabled {
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{"Error": "Invalid username or password"})
+		c.HTML(http.StatusUnauthorized, "login.gohtml", gin.H{"Error": "Invalid username or password"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{"Error": "Invalid username or password"})
+		c.HTML(http.StatusUnauthorized, "login.gohtml", gin.H{"Error": "Invalid username or password"})
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *Handler) TwoFALoginPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
-	c.HTML(http.StatusOK, "login_2fa.html", gin.H{"Error": ""})
+	c.HTML(http.StatusOK, "login_2fa.gohtml", gin.H{"Error": ""})
 }
 
 // TwoFALoginSubmit validates the TOTP code and completes the login.
@@ -198,7 +198,7 @@ func (h *Handler) TwoFALoginSubmit(c *gin.Context) {
 	}
 
 	if !totp.Validate(code, secret) {
-		c.HTML(http.StatusUnauthorized, "login_2fa.html", gin.H{"Error": "Invalid code. Please try again."})
+		c.HTML(http.StatusUnauthorized, "login_2fa.gohtml", gin.H{"Error": "Invalid code. Please try again."})
 		return
 	}
 

@@ -138,13 +138,13 @@ For namespaced SOAP/XML, use `//*[local-name()='tagname']` in XPath expressions.
 3. Register it in `checkerFor()` switch in `checker.go`
 4. Add a migration if new DB columns are needed
 5. Update `monitorFromForm`, `exportDoc`, `importDoc` in `internal/web/handlers/monitors.go`
-6. Add UI section in `internal/web/templates/monitor_form.html`
+6. Add UI section in `internal/web/templates/monitor_form.gohtml`
 
 ## Adding a New Notification Provider
 
 1. Create `internal/notifier/PROVIDER.go` implementing the `Provider` interface
 2. Register in `internal/notifier/notifier.go`
-3. Add config UI in `internal/web/templates/notification_form.html`
+3. Add config UI in `internal/web/templates/notification_form.gohtml`
 4. Update the `notifSummaryMap` helper in `internal/web/handlers/monitors.go`
 
 ## Code Conventions
@@ -155,6 +155,8 @@ For namespaced SOAP/XML, use `//*[local-name()='tagname']` in XPath expressions.
 - Helper function `baseMonitor(url string) *models.Monitor` exists in test files
 - `HTTPPassword` and `PushToken` are **excluded** from monitor export JSON
 - Imported monitors start with `Active: false` and name suffix `" (imported)"`
+- Golang html/template for SSR; no frontend framework; custom CSS with a dark theme, mobile-responsive
+- Use .gohtml extension for templates to enable Go syntax highlighting in editors
 
 ## Key Dependencies
 

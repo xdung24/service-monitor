@@ -41,7 +41,7 @@ func (h *Handler) SettingsPage(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "admin_settings.html", h.pageData(c, gin.H{
+	c.HTML(http.StatusOK, "admin_settings.gohtml", h.pageData(c, gin.H{
 		"Flash":               flash,
 		"Error":               "",
 		"RegistrationEnabled": h.settingsStore().RegistrationEnabled(),
@@ -55,7 +55,7 @@ func (h *Handler) SettingsPage(c *gin.Context) {
 func (h *Handler) SettingsUpdate(c *gin.Context) {
 	regEnabled := c.PostForm("registration_enabled") == "1"
 	if err := h.settingsStore().SetRegistrationEnabled(regEnabled); err != nil {
-		c.HTML(http.StatusInternalServerError, "admin_settings.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "admin_settings.gohtml", gin.H{
 			"Error":               "Failed to save settings: " + err.Error(),
 			"RegistrationEnabled": !regEnabled,
 		})

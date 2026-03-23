@@ -117,7 +117,7 @@ The monitor latency/downtime chart is driven by a JSON endpoint that can be embe
 
 ### Embedding the chart
 
-Add two elements and call the render function from `dashboard.html`:
+Add two elements and call the render function from `dashboard.gohtml`:
 
 ```html
 <svg id="my-chart-svg" width="100%" style="height:200px;"></svg>
@@ -125,7 +125,7 @@ Add two elements and call the render function from `dashboard.html`:
 ```
 
 ```js
-// Copy renderChart(data, svgId, tooltipId) from dashboard.html,
+// Copy renderChart(data, svgId, tooltipId) from dashboard.gohtml,
 // then call it:
 fetch('/status/alice/my-page/chart-data/3?since=24h')
   .then(r => r.json())

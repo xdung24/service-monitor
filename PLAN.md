@@ -12,14 +12,14 @@ See `FEATURES.md` for current status of each item.
 - Add `CertExpiryAlertDays` field to Monitor struct (`internal/models/monitor.go`)
 - Update all SQL queries in `internal/models/store.go` to include the column
 - `HTTPChecker.Check()`: after successful response, if `CertExpiryAlertDays > 0` and `resp.TLS != nil`, inspect the leaf certificate's `NotAfter`; if it expires within the alert window, return DOWN
-- Add field to `monitor_form.html` (HTTP section only)
+- Add field to `monitor_form.gohtml` (HTTP section only)
 - Add to `monitorFromForm()` parser
 
 ### 1.2 Public Status Page
 - Migration 0004: `status_pages(id, name, slug UNIQUE, description, created_at, updated_at)` + `status_page_monitors(page_id FK, monitor_id FK, position)`
 - `internal/models/status_page.go` — StatusPage, StatusPageStore
 - Handlers: CRUD at `/status-pages/*`; public read-only at `/status/:username/:slug` (no auth)
-- Templates: `status_page_list.html`, `status_page_form.html`, `status_page_public.html`
+- Templates: `status_page_list.gohtml`, `status_page_form.gohtml`, `status_page_public.gohtml`
 - Public page shows monitor name, current UP/DOWN badge, 24h uptime, last-check time
 
 ### 1.3 Tags / Labels
@@ -36,12 +36,12 @@ See `FEATURES.md` for current status of each item.
 
 ### 1.5 Dark/Light Theme Toggle
 - `sm_theme` cookie (light/dark); JS reads it and sets `data-theme` on `<html>` element
-- CSS: `[data-theme="light"]` override block in `partials.html` styles
+- CSS: `[data-theme="light"]` override block in `partials.gohtml` styles
 - Toggle button in navbar; `POST /settings/theme` handler sets or clears the cookie
 
 ### 1.6 Latency Sparkline Charts
 - `HeartbeatStore.LatencyHistory(monitorID, limit)` returns latencies newest-first
-- Dashboard handler: compute per-monitor sparkline SVG in Go and pass as `map[int64]template.HTML`
+- Dashboard handler: compute per-monitor sparkline SVG in Go and pass as `map[int64]template.gohtml`
 - Template: add `{{index $.Sparklines .ID}}` column to dashboard table
 
 ---
@@ -197,7 +197,7 @@ Every provider has unit tests (field-validation + `httptest` HTTP roundtrip).
 - `NewHTTPClient(m, proxyURL string)`: configures `http.Transport.Proxy` when proxyURL non-empty
 - Scheduler resolves proxy URL for HTTP monitors when building the cached `*http.Client`
 - Handlers: `/proxies/*` CRUD (ProxyList, ProxyNew, ProxyCreate, ProxyEdit, ProxyUpdate, ProxyDelete)
-- Template: `proxies.html` management page; navbar link added
+- Template: `proxies.gohtml` management page; navbar link added
 - Monitor form: proxy dropdown in HTTP fields section (`AllProxies` data key)
 
 ### 5.2 HTTP Client Reuse ✅

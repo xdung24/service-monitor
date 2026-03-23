@@ -6,7 +6,7 @@ import (
 	"html/template"
 )
 
-//go:embed template.html
+//go:embed template.gohtml
 var emailTemplateSource string
 
 var emailTemplates = template.Must(template.New("").Parse(emailTemplateSource))
