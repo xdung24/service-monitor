@@ -38,7 +38,7 @@ func (h *Handler) TwoFASetupPage(c *gin.Context) {
 	username := h.username(c)
 
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "ServiceMonitor",
+		Issuer:      "ServiceConductor",
 		AccountName: username,
 	})
 	if err != nil {
@@ -110,7 +110,7 @@ func (h *Handler) TwoFAVerify(c *gin.Context) {
 
 	if !totp.Validate(code, secret) {
 		// Re-render the setup page with the same QR code so the user can retry.
-		keyURL := fmt.Sprintf("otpauth://totp/ServiceMonitor%%3A%s?secret=%s&issuer=ServiceMonitor",
+		keyURL := fmt.Sprintf("otpauth://totp/ServiceConductor%%3A%s?secret=%s&issuer=ServiceConductor",
 			url.QueryEscape(username), secret)
 		key, parseErr := otp.NewKeyFromURL(keyURL)
 

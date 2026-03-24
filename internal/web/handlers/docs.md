@@ -1,8 +1,8 @@
-# ServiceMonitor Documentation
+# ServiceConductor Documentation
 
 ## Overview
 
-ServiceMonitor is a self-hosted uptime monitoring tool. It regularly checks your websites and services, and sends you an alert when something goes down — so you find out before your users do.
+ServiceConductor is a self-hosted uptime monitoring tool. It regularly checks your websites and services, and sends you an alert when something goes down — so you find out before your users do.
 
 - Each user's data is stored in its own separate database, so multiple users never slow each other down
 - The dashboard is built into the server — no extra setup or build tools needed
@@ -37,7 +37,7 @@ The dashboard will be available at `http://localhost:3001`.
 
 ### Option 3 — Cloud / managed hosting
 
-If you are using a hosted version of ServiceMonitor, your administrator will give you the URL and either create an account for you or send you an invite link to sign up.
+If you are using a hosted version of ServiceConductor, your administrator will give you the URL and either create an account for you or send you an invite link to sign up.
 
 ---
 
@@ -57,7 +57,7 @@ All settings are controlled through environment variables (values you set before
 
 ## Monitor Types
 
-Each monitor has a **type** that tells ServiceMonitor how to check your service and which settings are available. You choose the type when creating or editing a monitor.
+Each monitor has a **type** that tells ServiceConductor how to check your service and which settings are available. You choose the type when creating or editing a monitor.
 
 ### HTTP / HTTPS
 
@@ -116,7 +116,7 @@ Connects to an email server to verify it is running and accepting connections.
 
 ### Push / Heartbeat
 
-A different kind of monitor — instead of ServiceMonitor checking your service, *your service* sends a regular "still alive" signal to ServiceMonitor. If the signal stops arriving within the expected interval, the monitor goes DOWN.
+A different kind of monitor — instead of ServiceConductor checking your service, *your service* sends a regular "still alive" signal to ServiceConductor. If the signal stops arriving within the expected interval, the monitor goes DOWN.
 
 This is ideal for scheduled jobs, background scripts, or batch processes that run on a timer.
 
@@ -139,7 +139,7 @@ Connects to a database server and checks that it is accessible. Available for th
 | **Redis** | `redis://:password@host:6379/0` |
 | **MongoDB** | `mongodb://user:password@host:27017/dbname` |
 
-ServiceMonitor attempts to connect (and ping) the database — UP means the connection succeeded, DOWN means it did not.
+ServiceConductor attempts to connect (and ping) the database — UP means the connection succeeded, DOWN means it did not.
 
 ### Advanced Monitor Types
 
@@ -163,7 +163,7 @@ ServiceMonitor attempts to connect (and ping) the database — UP means the conn
 
 ## Notifications
 
-Notification providers are the channels ServiceMonitor uses to alert you. You set up a provider once and then attach it to as many monitors as you like. When a monitor changes state (goes down or comes back up), all its linked providers send an alert.
+Notification providers are the channels ServiceConductor uses to alert you. You set up a provider once and then attach it to as many monitors as you like. When a monitor changes state (goes down or comes back up), all its linked providers send an alert.
 
 **Supported channels:** Slack, Discord, Telegram, Email (SMTP), ntfy, Webhook, Mattermost, Rocket.Chat, MS Teams, Google Chat, DingTalk, Feishu / Lark, WeCom, PagerDuty, Pushover, Gotify, Bark, Matrix, Signal, LINE Notify, SendGrid, Resend, Twilio SMS, Home Assistant, and more.
 
@@ -209,7 +209,7 @@ Tags are colour-coded labels you can attach to monitors for easy grouping and vi
 
 ## API Keys
 
-API keys let external tools or scripts access ServiceMonitor without using your password. They are sent in the `Authorization: Bearer <token>` header and work on all the same pages your browser session can access.
+API keys let external tools or scripts access ServiceConductor without using your password. They are sent in the `Authorization: Bearer <token>` header and work on all the same pages your browser session can access.
 
 ### Creating a Key
 
@@ -280,7 +280,7 @@ By default, nobody can sign up on their own — only admins can create accounts.
 - **Open** — anyone who can reach the server can create an account.
 
 
-ServiceMonitor watches your websites and online services around the clock. If something goes down, it sends you an alert right away so you can act fast — instead of waiting for a customer to report the problem.
+ServiceConductor watches your websites and online services around the clock. If something goes down, it sends you an alert right away so you can act fast — instead of waiting for a customer to report the problem.
 
 You can monitor websites, servers, email systems, databases, and more, all from one simple dashboard.
 
@@ -350,7 +350,7 @@ For **Website (HTTP/HTTPS)** monitors, you can go beyond a simple "does it load?
 
 ### Heartbeat Monitors
 
-A **Heartbeat** monitor works the other way around: instead of ServiceMonitor reaching out to check your service, *your service* sends a regular "I'm alive" ping to ServiceMonitor.
+A **Heartbeat** monitor works the other way around: instead of ServiceConductor reaching out to check your service, *your service* sends a regular "I'm alive" ping to ServiceConductor.
 
 This is useful for scheduled jobs (e.g. a nightly backup script). If the job fails and stops sending its ping, you get an alert.
 
@@ -364,7 +364,7 @@ You can temporarily stop checks without deleting the monitor. Open the monitor a
 
 ## Notifications
 
-A **notification** is how ServiceMonitor tells you when something goes wrong (or comes back up). You set up a notification provider once, then attach it to any monitors you like.
+A **notification** is how ServiceConductor tells you when something goes wrong (or comes back up). You set up a notification provider once, then attach it to any monitors you like.
 
 ### Setting Up a Notification
 
@@ -380,7 +380,7 @@ When creating or editing a monitor, scroll down to the **Notifications** section
 
 ### Supported Notification Channels
 
-ServiceMonitor can send alerts through many channels, including:
+ServiceConductor can send alerts through many channels, including:
 
 - **Email**
 - **Slack** and **Discord**
@@ -415,7 +415,7 @@ The public URL will be: `https://your-server/status/your-username/my-company`
 
 ## Maintenance Windows
 
-A **Maintenance Window** tells ServiceMonitor to pause alerts for selected monitors during a planned period — for example, while you perform a server upgrade. Checks still run, but no notifications are sent.
+A **Maintenance Window** tells ServiceConductor to pause alerts for selected monitors during a planned period — for example, while you perform a server upgrade. Checks still run, but no notifications are sent.
 
 ### Creating a Maintenance Window
 
@@ -437,9 +437,9 @@ Manage tags under your username menu → **Tags**.
 
 ## API Keys
 
-An **API key** lets a program or script access ServiceMonitor on your behalf, without needing your password.
+An **API key** lets a program or script access ServiceConductor on your behalf, without needing your password.
 
-You probably won't need this unless you have a developer integrating ServiceMonitor with another tool.
+You probably won't need this unless you have a developer integrating ServiceConductor with another tool.
 
 To create one: username menu → **API Keys** → enter a name → **Create**. Copy the token shown — it will not be shown again.
 
