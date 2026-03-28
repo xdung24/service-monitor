@@ -26,6 +26,10 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	cfg := config.Load()
+	if len(cfg.SecretKey) < 32 {
+		slog.Error("startup failed", "error", "SECRET_KEY must be at least 32 characters")
+		os.Exit(1)
+	}
 
 	// migrate opens the DB and wires global lookups; no defers registered yet
 	// so os.Exit is safe here.

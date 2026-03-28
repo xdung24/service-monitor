@@ -56,11 +56,18 @@ func (h *Handler) AuthRequired() gin.HandlerFunc {
 		// --- Session cookie ---
 		cookie, err := c.Cookie(sessionCookieName)
 		if err != nil || !h.validSession(cookie) {
+			h.clearSessionCookie(c)
 			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
-		username, _ := verifyToken(cookie, h.cfg.SecretKey)
+		username, issuedAt, _ := verifyTokenWithIAT(cookie, h.cfg.SecretKey)
+		if time.Since(time.Unix(issuedAt, 0)) > h.cfg.SessionMaxAge {
+			h.clearSessionCookie(c)
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
 		db, err := h.registry.Get(username)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.gohtml", gin.H{"Error": "failed to open user database"})
@@ -99,8 +106,11 @@ func (h *Handler) isAdmin(c *gin.Context) bool {
 }
 
 func (h *Handler) validSession(token string) bool {
-	username, ok := verifyToken(token, h.cfg.SecretKey)
+	username, issuedAt, ok := verifyTokenWithIAT(token, h.cfg.SecretKey)
 	if !ok {
+		return false
+	}
+	if time.Since(time.Unix(issuedAt, 0)) > h.cfg.SessionMaxAge {
 		return false
 	}
 	u, err := h.users.GetByUsername(username)
@@ -149,13 +159,13 @@ func (h *Handler) LoginSubmit(c *gin.Context) {
 	_, enabled, _ := h.users.GetTOTP(username)
 	if enabled {
 		pendingToken := signPendingToken(username, h.cfg.SecretKey)
-		c.SetCookie("sm_pending", pendingToken, int(5*time.Minute/time.Second), "/", "", false, true)
+		c.SetCookie("sm_pending", pendingToken, int(5*time.Minute/time.Second), "/", "", h.cfg.SecureCookies, true)
 		c.Redirect(http.StatusFound, "/login/2fa")
 		return
 	}
 
 	token := signToken(username, h.cfg.SecretKey)
-	c.SetCookie(sessionCookieName, token, int(24*time.Hour/time.Second), "/", "", false, true)
+	c.SetCookie(sessionCookieName, token, int(h.cfg.SessionMaxAge/time.Second), "/", "", h.cfg.SecureCookies, true)
 	c.Redirect(http.StatusFound, "/")
 }
 
@@ -168,7 +178,7 @@ func (h *Handler) TwoFALoginPage(c *gin.Context) {
 	}
 	_, ok := verifyPendingToken(pending, h.cfg.SecretKey)
 	if !ok {
-		c.SetCookie("sm_pending", "", -1, "/", "", false, true)
+		c.SetCookie("sm_pending", "", -1, "/", "", h.cfg.SecureCookies, true)
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
@@ -184,7 +194,7 @@ func (h *Handler) TwoFALoginSubmit(c *gin.Context) {
 	}
 	username, ok := verifyPendingToken(pending, h.cfg.SecretKey)
 	if !ok {
-		c.SetCookie("sm_pending", "", -1, "/", "", false, true)
+		c.SetCookie("sm_pending", "", -1, "/", "", h.cfg.SecureCookies, true)
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
@@ -192,7 +202,7 @@ func (h *Handler) TwoFALoginSubmit(c *gin.Context) {
 	code := strings.TrimSpace(c.PostForm("code"))
 	secret, enabled, totpErr := h.users.GetTOTP(username)
 	if totpErr != nil || !enabled || secret == "" {
-		c.SetCookie("sm_pending", "", -1, "/", "", false, true)
+		c.SetCookie("sm_pending", "", -1, "/", "", h.cfg.SecureCookies, true)
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
@@ -202,14 +212,18 @@ func (h *Handler) TwoFALoginSubmit(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("sm_pending", "", -1, "/", "", false, true)
+	c.SetCookie("sm_pending", "", -1, "/", "", h.cfg.SecureCookies, true)
 	token := signToken(username, h.cfg.SecretKey)
-	c.SetCookie(sessionCookieName, token, int(24*time.Hour/time.Second), "/", "", false, true)
+	c.SetCookie(sessionCookieName, token, int(h.cfg.SessionMaxAge/time.Second), "/", "", h.cfg.SecureCookies, true)
 	c.Redirect(http.StatusFound, "/")
 }
 
 // Logout clears the session cookie.
 func (h *Handler) Logout(c *gin.Context) {
-	c.SetCookie(sessionCookieName, "", -1, "/", "", false, true)
+	h.clearSessionCookie(c)
 	c.Redirect(http.StatusFound, "/login")
+}
+
+func (h *Handler) clearSessionCookie(c *gin.Context) {
+	c.SetCookie(sessionCookieName, "", -1, "/", "", h.cfg.SecureCookies, true)
 }

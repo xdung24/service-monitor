@@ -1,6 +1,9 @@
 package handlers
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestSignVerifyToken_RoundTrip(t *testing.T) {
 	token := signToken("alice", "supersecret")
@@ -51,5 +54,20 @@ func TestVerifyToken_Empty(t *testing.T) {
 	_, ok := verifyToken("", "secret")
 	if ok {
 		t.Fatal("expected empty token to fail")
+	}
+}
+
+func TestVerifyTokenWithIAT_RoundTrip(t *testing.T) {
+	now := time.Now().UTC().Unix()
+	token := signTokenWithIAT("alice", "supersecret", now)
+	username, iat, ok := verifyTokenWithIAT(token, "supersecret")
+	if !ok {
+		t.Fatal("expected valid token to verify successfully")
+	}
+	if username != "alice" {
+		t.Fatalf("expected username %q, got %q", "alice", username)
+	}
+	if iat != now {
+		t.Fatalf("expected iat %d, got %d", now, iat)
 	}
 }

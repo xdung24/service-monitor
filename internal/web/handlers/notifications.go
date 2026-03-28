@@ -189,6 +189,23 @@ func (h *Handler) NotificationLogList(c *gin.Context) {
 	c.HTML(http.StatusOK, "notification_log.gohtml", h.pageData(c, gin.H{"Logs": logs}))
 }
 
+// NotificationLogCount returns unread notification-log count after since_id.
+func (h *Handler) NotificationLogCount(c *gin.Context) {
+	sinceID, _ := strconv.ParseInt(c.DefaultQuery("since_id", "0"), 10, 64)
+	if sinceID < 0 {
+		sinceID = 0
+	}
+	unread, latestID, err := h.notifLogStore(c).CountSince(sinceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"unread":    unread,
+		"latest_id": latestID,
+	})
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -236,7 +253,7 @@ func notificationFromForm(c *gin.Context) (*models.Notification, string, error) 
 		"login", "phones",
 		"line_number", "mobile", "sender_name", "sender_sms", "sender", "apikey",
 		"account_sid", "auth_token", "user", "pass",
-		"priority",
+		"priority", "push_key",
 	}
 	cfg := make(map[string]string)
 	for _, k := range allKeys {

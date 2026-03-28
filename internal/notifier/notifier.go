@@ -57,9 +57,12 @@ var Registry = map[string]Provider{
 	"gorush":        &GorushProvider{},
 	"pushover":      &PushoverProvider{},
 	"pushplus":      &PushPlusProvider{},
+	"pushbullet":    &PushbulletProvider{},
+	"pushdeer":      &PushDeerProvider{},
 	"serverchan":    &ServerChanProvider{},
 	"line":          &LINEProvider{},
 	"homeassistant": &HomeAssistantProvider{},
+	"splunk":        &SplunkProvider{},
 	// Incident management
 	"pagerduty": &PagerDutyProvider{},
 	// Matrix

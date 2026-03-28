@@ -1,7 +1,9 @@
 package web
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"html/template"
 	"io/fs"
@@ -142,8 +144,44 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
-		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:")
+		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		c.Next()
+	})
+
+	// CSRF middleware: issue sm_csrf cookie and verify state-changing form/header tokens.
+	r.Use(func(c *gin.Context) {
+		csrfCookie := "sm_csrf"
+		csrfToken, err := c.Cookie(csrfCookie)
+		if err != nil || csrfToken == "" {
+			buf := make([]byte, 32)
+			if _, readErr := rand.Read(buf); readErr == nil {
+				csrfToken = base64.RawURLEncoding.EncodeToString(buf)
+				c.SetCookie(csrfCookie, csrfToken, int(24*time.Hour/time.Second), "/", "", cfg.SecureCookies, false)
+			}
+		}
+
+		method := c.Request.Method
+		if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
+			c.Next()
+			return
+		}
+
+		if strings.HasPrefix(c.GetHeader("Authorization"), "Bearer ") {
+			c.Next()
+			return
+		}
+
+		submitted := c.PostForm("_csrf")
+		if submitted == "" {
+			submitted = c.GetHeader("X-CSRF-Token")
+		}
+		if submitted == "" || csrfToken == "" || submitted != csrfToken {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
 		c.Next()
 	})
 
@@ -248,6 +286,7 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 		auth.POST("/notifications/:id/delete", h.NotificationDelete)
 		auth.POST("/notifications/:id/test", h.NotificationTest)
 		auth.GET("/notifications/logs", h.NotificationLogList)
+		auth.GET("/notifications/logs/count", h.NotificationLogCount)
 
 		// Tags
 		auth.GET("/tags", h.TagList)

@@ -960,3 +960,18 @@ func (s *NotificationLogStore) ListForMonitor(monitorID int64, limit int) ([]*No
 	}
 	return logs, rows.Err()
 }
+
+// CountSince returns the number of notification_logs rows with ID > sinceID,
+// along with the current max log ID (0 when table is empty).
+func (s *NotificationLogStore) CountSince(sinceID int64) (count int, latestID int64, err error) {
+	err = s.db.QueryRowContext(context.Background(), `
+		SELECT
+			COALESCE(SUM(CASE WHEN id > ? THEN 1 ELSE 0 END), 0) AS unread,
+			COALESCE(MAX(id), 0) AS latest
+		FROM notification_logs
+	`, sinceID).Scan(&count, &latestID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return count, latestID, nil
+}

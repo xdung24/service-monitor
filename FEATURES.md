@@ -133,8 +133,8 @@ This document tracks which features are implemented, in progress, or planned.
 | Notification providers: PagerTree | ⬜ Planned | |
 | Notification providers: PromoSMS | ✅ Done | SMS |
 | Notification providers: Pumble | ⬜ Planned | |
-| Notification providers: Pushbullet | ⬜ Planned | |
-| Notification providers: PushDeer | ⬜ Planned | |
+| Notification providers: Pushbullet | ✅ Done | |
+| Notification providers: PushDeer | ✅ Done | |
 | Notification providers: Pushover | ✅ Done | User key + API token + optional device |
 | Notification providers: PushPlus | ✅ Done | WeChat push |
 | Notification providers: Pushy | ⬜ Planned | |
@@ -151,7 +151,7 @@ This document tracks which features are implemented, in progress, or planned.
 | Notification providers: SMS.ir | ✅ Done | SMS (Iran) |
 | Notification providers: SMS Manager | ⬜ Planned | |
 | Notification providers: SMS Planet | ⬜ Planned | |
-| Notification providers: Splunk | ⬜ Planned | |
+| Notification providers: Splunk | ✅ Done | |
 | Notification providers: SpugPush | ⬜ Planned | |
 | Notification providers: Squadcast | ⬜ Planned | |
 | Notification providers: Stackfield | ⬜ Planned | |
@@ -189,8 +189,14 @@ This document tracks which features are implemented, in progress, or planned.
 | Transactional emails | ✅ Done | Automated emails for: invite link, password reset, account disabled/enabled, 2FA removed/enabled, password changed by admin, password changed via reset link |
 | Favicon | ✅ Done | SVG favicon embedded from `internal/web/public/`; static files under `public/` served at root with correct content-type |
 | Homepage (landing page) | ✅ Done | Unauthenticated landing page at `/` showing app tagline, feature highlights, and a grid of all public status pages; authenticated visitors are redirected to `/monitors` |
-| Notification badge | ⬜ Planned | Show number of new notification badge |
-| Push notification| ⬜ Planned | Push notification to user's browser |
+| Notification badge | ✅ Done | Navbar badge showing unread notification-log events |
+| Push notification | ✅ Done | Browser Notification API alerts for new notification-log events |
+| SECRET_KEY minimum length enforcement | ✅ Done | Startup fails when `SECRET_KEY` is shorter than 32 chars |
+| Secure session cookie flag | ✅ Done | Session/pending cookies honor `SECURE_COOKIES` env flag |
+| Session expiry (server-side) | ✅ Done | Signed token includes issued-at; middleware rejects tokens older than `SESSION_MAX_AGE` |
+| CSRF protection | ✅ Done | Double-submit token (`sm_csrf` + `_csrf` / `X-CSRF-Token`) on state-changing requests |
+| Rate limiter stale-entry eviction | ✅ Done | Background cleanup removes inactive IP entries every 5 min (15 min idle TTL) |
+| HTTP security headers middleware | ✅ Done | Adds CSP + Permissions-Policy + hardening headers on all responses |
 ---
 
 ## Status page features

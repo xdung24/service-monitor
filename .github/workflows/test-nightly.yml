@@ -1,0 +1,174 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC every day
+  workflow_dispatch:
+    inputs:
+      k6_profile:
+        description: 'k6 profile: baseline | stress'
+        default: baseline
+        required: false
+
+env:
+  GO_VERSION: '1.25'
+  CI_SECRET_KEY: ci-test-secret-key-minimum-32chars
+
+jobs:
+  # ------------------------------------------------------------------ #
+  # Job 1: Full unit test suite                                         #
+  # ------------------------------------------------------------------ #
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run unit tests
+        run: go test -race -timeout 10m ./...
+
+  # ------------------------------------------------------------------ #
+  # Job 2: Full Bruno regression suite                                  #
+  # ------------------------------------------------------------------ #
+  functional-full:
+    name: Functional Tests — Full Regression (Bruno)
+    runs-on: ubuntu-latest
+    needs: unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build server binary
+        run: go build -o conductor ./cmd/server
+
+      - name: Start Conductor server
+        env:
+          SECRET_KEY: ${{ env.CI_SECRET_KEY }}
+          DATA_DIR: /tmp/conductor-nightly
+          LISTEN_ADDR: ':3001'
+        run: |
+          mkdir -p /tmp/conductor-nightly
+          ./conductor &
+          echo $! > /tmp/conductor.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/healthz > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:3001/healthz || (echo "Server failed to start" && exit 1)
+
+      - name: Install Bruno CLI
+        run: npm install -g @usebruno/cli
+
+      - name: Run full Bruno collection
+        working-directory: tests/functional
+        run: |
+          mkdir -p ../../test-results
+          bru run --env ci --output ../../test-results/bruno-nightly.json 2>&1 | tee ../../test-results/bruno-nightly.log
+
+      - name: Stop server
+        if: always()
+        run: kill $(cat /tmp/conductor.pid) 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-nightly-results
+          path: test-results/
+
+  # ------------------------------------------------------------------ #
+  # Job 3: k6 baseline or stress suite                                  #
+  # ------------------------------------------------------------------ #
+  performance-full:
+    name: Performance Tests — ${{ github.event.inputs.k6_profile || 'baseline' }} (k6)
+    runs-on: ubuntu-latest
+    needs: unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build server binary
+        run: go build -o conductor ./cmd/server
+
+      - name: Start Conductor server
+        env:
+          SECRET_KEY: ${{ env.CI_SECRET_KEY }}
+          DATA_DIR: /tmp/conductor-perf-nightly
+          LISTEN_ADDR: ':3001'
+        run: |
+          mkdir -p /tmp/conductor-perf-nightly
+          ./conductor &
+          echo $! > /tmp/conductor.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/healthz > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:3001/healthz || (echo "Server failed to start" && exit 1)
+
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Set k6 VUs and duration from profile
+        id: k6cfg
+        run: |
+          PROFILE="${{ github.event.inputs.k6_profile || 'baseline' }}"
+          if [ "$PROFILE" = "stress" ]; then
+            echo "vus=100"    >> "$GITHUB_OUTPUT"
+            echo "duration=3m" >> "$GITHUB_OUTPUT"
+          else
+            # baseline
+            echo "vus=20"    >> "$GITHUB_OUTPUT"
+            echo "duration=1m" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: k6 — health endpoint
+        working-directory: tests/performance
+        run: |
+          k6 run \
+            --vus ${{ steps.k6cfg.outputs.vus }} \
+            --duration ${{ steps.k6cfg.outputs.duration }} \
+            --env ENV=ci \
+            --out json=/tmp/k6-health.json \
+            get-healthz.k6
+
+      - name: k6 — status summary endpoint
+        working-directory: tests/performance
+        run: |
+          k6 run \
+            --vus ${{ steps.k6cfg.outputs.vus }} \
+            --duration ${{ steps.k6cfg.outputs.duration }} \
+            --env ENV=ci \
+            --out json=/tmp/k6-summary.json \
+            get-status-summary.k6
+
+      - name: Stop server
+        if: always()
+        run: kill $(cat /tmp/conductor.pid) 2>/dev/null || true
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-nightly-results
+          path: /tmp/k6-*.json

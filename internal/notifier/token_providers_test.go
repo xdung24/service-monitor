@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -229,5 +230,108 @@ func TestOneBotProvider_Send(t *testing.T) {
 	}, Event{MonitorName: "svc", Status: 1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPushbulletProvider_Send(t *testing.T) {
+	var authHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Access-Token")
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	orig := pushbulletAPIURL
+	pushbulletAPIURL = srv.URL
+	defer func() { pushbulletAPIURL = orig }()
+
+	err := (&PushbulletProvider{}).Send(context.Background(), map[string]string{
+		"token":  "pbtoken",
+		"device": "device-123",
+	}, Event{MonitorName: "svc", Status: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if authHeader != "pbtoken" {
+		t.Errorf("expected Access-Token=pbtoken, got %q", authHeader)
+	}
+}
+
+func TestPushbulletProvider_MissingToken(t *testing.T) {
+	err := (&PushbulletProvider{}).Send(context.Background(), map[string]string{}, Event{})
+	if err == nil {
+		t.Fatal("expected error for missing token")
+	}
+}
+
+func TestPushDeerProvider_Send(t *testing.T) {
+	var gotPath string
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.Query()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	err := (&PushDeerProvider{}).Send(context.Background(), map[string]string{
+		"push_key":   "pdkey",
+		"server_url": srv.URL,
+	}, Event{MonitorName: "svc", Status: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/message/push" {
+		t.Errorf("expected /message/push path, got %s", gotPath)
+	}
+	if gotQuery.Get("pushkey") != "pdkey" {
+		t.Errorf("expected pushkey=pdkey, got %s", gotQuery.Get("pushkey"))
+	}
+}
+
+func TestPushDeerProvider_MissingKey(t *testing.T) {
+	err := (&PushDeerProvider{}).Send(context.Background(), map[string]string{}, Event{})
+	if err == nil {
+		t.Fatal("expected error for missing push_key")
+	}
+}
+
+func TestSplunkProvider_Send(t *testing.T) {
+	var authHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	err := (&SplunkProvider{}).Send(context.Background(), map[string]string{
+		"url":   srv.URL,
+		"token": "spl-token",
+	}, Event{MonitorName: "svc", Status: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if authHeader != "Splunk spl-token" {
+		t.Errorf("expected Authorization=Splunk spl-token, got %q", authHeader)
+	}
+}
+
+func TestSplunkProvider_MissingURL(t *testing.T) {
+	err := (&SplunkProvider{}).Send(context.Background(), map[string]string{"token": "x"}, Event{})
+	if err == nil {
+		t.Fatal("expected error for missing url")
+	}
+}
+
+func TestSplunkProvider_MissingToken(t *testing.T) {
+	err := (&SplunkProvider{}).Send(context.Background(), map[string]string{"url": "http://x"}, Event{})
+	if err == nil {
+		t.Fatal("expected error for missing token")
 	}
 }

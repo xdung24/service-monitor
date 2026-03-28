@@ -2,6 +2,8 @@
 
 This directory contains functional tests (Bruno) and performance tests (k6).
 
+See the risk-based master plan: [TEST_PLAN.md](TEST_PLAN.md).
+
 ```
 tests/
   functional/     Bruno collection — API correctness checks

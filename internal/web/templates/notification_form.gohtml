@@ -59,12 +59,15 @@
                     <option value="gorush"        {{ if eq .Notification.Type "gorush"        }}selected{{ end }}>Gorush</option>
                     <option value="pushover"      {{ if eq .Notification.Type "pushover"      }}selected{{ end }}>Pushover</option>
                     <option value="pushplus"      {{ if eq .Notification.Type "pushplus"      }}selected{{ end }}>PushPlus</option>
+                    <option value="pushbullet"    {{ if eq .Notification.Type "pushbullet"    }}selected{{ end }}>Pushbullet</option>
+                    <option value="pushdeer"      {{ if eq .Notification.Type "pushdeer"      }}selected{{ end }}>PushDeer</option>
                     <option value="serverchan"    {{ if eq .Notification.Type "serverchan"    }}selected{{ end }}>ServerChan (Server酱)</option>
                     <option value="line"          {{ if eq .Notification.Type "line"          }}selected{{ end }}>LINE Notify</option>
                     <option value="homeassistant" {{ if eq .Notification.Type "homeassistant" }}selected{{ end }}>Home Assistant</option>
                 </optgroup>
                 <optgroup label="Incident Management">
                     <option value="pagerduty" {{ if eq .Notification.Type "pagerduty" }}selected{{ end }}>PagerDuty</option>
+                    <option value="splunk"    {{ if eq .Notification.Type "splunk"    }}selected{{ end }}>Splunk HEC</option>
                 </optgroup>
                 <optgroup label="Messaging Apps">
                     <option value="matrix"    {{ if eq .Notification.Type "matrix"    }}selected{{ end }}>Matrix / Element</option>
@@ -269,6 +272,38 @@
         </div>
 
         <!-- ======================================================= -->
+        <!-- Pushbullet -->
+        <!-- ======================================================= -->
+        <div id="fields-pushbullet" class="provider-fields">
+            <div class="form-group">
+                <label>Access Token</label>
+                <input class="form-control" type="password" name="cfg_token"
+                       value="{{ index .Config "token" }}" autocomplete="new-password" />
+            </div>
+            <div class="form-group">
+                <label>Device Iden <span class="text-muted">(optional)</span></label>
+                <input class="form-control" type="text" name="cfg_device"
+                       value="{{ index .Config "device" }}" placeholder="ujpah72o0sjAoRtnM0jc" />
+            </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- PushDeer -->
+        <!-- ======================================================= -->
+        <div id="fields-pushdeer" class="provider-fields">
+            <div class="form-group">
+                <label>Push Key</label>
+                <input class="form-control" type="password" name="cfg_push_key"
+                       value="{{ index .Config "push_key" }}" autocomplete="new-password" />
+            </div>
+            <div class="form-group">
+                <label>Server URL <span class="text-muted">(optional, default: api2.pushdeer.com)</span></label>
+                <input class="form-control" type="url" name="cfg_server_url"
+                       value="{{ index .Config "server_url" }}" placeholder="https://api2.pushdeer.com" />
+            </div>
+        </div>
+
+        <!-- ======================================================= -->
         <!-- ServerChan -->
         <!-- ======================================================= -->
         <div id="fields-serverchan" class="provider-fields">
@@ -334,6 +369,22 @@
                     <option value="warning"  {{ if eq (index .Config "severity") "warning"  }}selected{{ end }}>warning</option>
                     <option value="info"     {{ if eq (index .Config "severity") "info"     }}selected{{ end }}>info</option>
                 </select>
+            </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- Splunk HEC -->
+        <!-- ======================================================= -->
+        <div id="fields-splunk" class="provider-fields">
+            <div class="form-group">
+                <label>HEC Endpoint URL</label>
+                <input class="form-control" type="url" name="cfg_url"
+                       value="{{ index .Config "url" }}" placeholder="https://splunk.example.com:8088/services/collector/event" />
+            </div>
+            <div class="form-group">
+                <label>HEC Token</label>
+                <input class="form-control" type="password" name="cfg_token"
+                       value="{{ index .Config "token" }}" autocomplete="new-password" />
             </div>
         </div>
 

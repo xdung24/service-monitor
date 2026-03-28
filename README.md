@@ -48,6 +48,16 @@ All config is via environment variables:
 | `LISTEN_ADDR` | `:3001`                   | HTTP listen address                  |
 | `DATA_DIR`    | `./data`                  | Root data directory                  |
 | `SECRET_KEY`  | `change-me-in-production` | HMAC key for sessions                |
+| `SECRET_KEY_SEED` | ``                    | Optional seed for deterministic daily fallback key when `SECRET_KEY` is empty |
+| `SECRET_KEY_SALT` | `conductor-v1`        | Optional salt/context for daily fallback key derivation |
+| `SECURE_COOKIES` | `false`                | Set `true` behind HTTPS to mark auth cookies as Secure |
+| `SESSION_MAX_AGE` | `24h`                 | Maximum accepted session age (Go duration string) |
+
+`SECRET_KEY` must be at least 32 characters; startup exits with an error otherwise.
+
+When `SECRET_KEY` is empty:
+- If `SECRET_KEY_SEED` is set, Conductor derives a deterministic daily key as `HMAC-SHA256(seed, salt:YYYY-MM-DD-UTC)` and uses the first 32 hex characters.
+- If `SECRET_KEY_SEED` is not set, Conductor uses a random 32-character key generated at startup (non-deterministic across restarts).
 
 ### Database layout
 
