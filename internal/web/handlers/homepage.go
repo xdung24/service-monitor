@@ -17,8 +17,5 @@ func (h *Handler) HomePage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/monitors")
 		return
 	}
-	pages, _ := h.users.ListAllStatusPageSlugs()
-	c.HTML(http.StatusOK, "home.gohtml", gin.H{
-		"StatusPages": pages,
-	})
+	c.HTML(http.StatusOK, "home.gohtml", gin.H{})
 }

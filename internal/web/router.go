@@ -255,6 +255,12 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 	// Enabled per-page via a UUID generated in the status page settings.
 	r.GET("/summary/:uuid", h.StatusPagePublicSummary)
 
+	// Public listing of all is_public status pages (unauthenticated).
+	r.GET("/pages", publicRL, h.PublicStatusPageList)
+
+	// Documentation page (unauthenticated — IsAdmin will be false for guests).
+	r.GET("/docs", h.DocsPage)
+
 	// Home page (public — redirects to /monitors when already authenticated)
 	r.GET("/", h.HomePage)
 
@@ -349,9 +355,6 @@ func NewRouter(usersDB *sql.DB, registry *database.Registry, msched *scheduler.M
 
 		// Account — Change Password
 		auth.POST("/account/password", h.AccountChangePassword)
-
-		// Documentation
-		auth.GET("/docs", h.DocsPage)
 
 		// Settings (per-user, e.g. theme)
 		auth.POST("/settings/theme", h.ThemeToggle)

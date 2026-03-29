@@ -515,15 +515,16 @@ type StatusPageSlugEntry struct {
 	Slug     string
 	Name     string
 	Username string
+	IsPublic bool
 }
 
 // RegisterStatusPageSlug records a mapping from a status-page slug to its owning username and name.
 // Slugs must be globally unique across all users; the caller should validate uniqueness first.
-func (s *UserStore) RegisterStatusPageSlug(slug, username, name string) error {
+func (s *UserStore) RegisterStatusPageSlug(slug, username, name string, isPublic bool) error {
 	_, err := s.db.ExecContext(context.Background(),
-		`INSERT INTO status_page_slugs (slug, username, name) VALUES (?, ?, ?)
-		 ON CONFLICT(slug) DO UPDATE SET username=excluded.username, name=excluded.name`,
-		slug, username, name,
+		`INSERT INTO status_page_slugs (slug, username, name, is_public) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(slug) DO UPDATE SET username=excluded.username, name=excluded.name, is_public=excluded.is_public`,
+		slug, username, name, isPublic,
 	)
 	return err
 }
@@ -531,7 +532,7 @@ func (s *UserStore) RegisterStatusPageSlug(slug, username, name string) error {
 // ListAllStatusPageSlugs returns all public status-page entries ordered by name.
 func (s *UserStore) ListAllStatusPageSlugs() ([]StatusPageSlugEntry, error) {
 	rows, err := s.db.QueryContext(context.Background(),
-		`SELECT slug, COALESCE(name,''), username FROM status_page_slugs ORDER BY name, slug`,
+		`SELECT slug, COALESCE(name,''), username FROM status_page_slugs WHERE is_public = 1 ORDER BY name, slug`,
 	)
 	if err != nil {
 		return nil, err
@@ -543,6 +544,7 @@ func (s *UserStore) ListAllStatusPageSlugs() ([]StatusPageSlugEntry, error) {
 		if err := rows.Scan(&e.Slug, &e.Name, &e.Username); err != nil {
 			return nil, err
 		}
+		e.IsPublic = true
 		out = append(out, e)
 	}
 	return out, rows.Err()

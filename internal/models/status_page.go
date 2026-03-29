@@ -13,6 +13,7 @@ type StatusPage struct {
 	Slug        string    `db:"slug"`         // URL-friendly identifier, globally unique per user
 	Description string    `db:"description"`  // optional subtitle shown on the public page
 	SummaryUUID string    `db:"summary_uuid"` // optional UUID enabling the /summary/:uuid JSON endpoint; empty = disabled
+	IsPublic    bool      `db:"is_public"`    // when false the public /status/:slug endpoint returns 404
 	CreatedAt   time.Time `db:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at"`
 }
@@ -36,7 +37,7 @@ func NewStatusPageStore(db *sql.DB) *StatusPageStore {
 // List returns all status pages ordered by name.
 func (s *StatusPageStore) List() ([]*StatusPage, error) {
 	rows, err := s.db.QueryContext(context.Background(), `
-		SELECT id, name, slug, description, summary_uuid, created_at, updated_at
+		SELECT id, name, slug, description, summary_uuid, is_public, created_at, updated_at
 		FROM status_pages ORDER BY name ASC
 	`)
 	if err != nil {
@@ -47,7 +48,7 @@ func (s *StatusPageStore) List() ([]*StatusPage, error) {
 	var pages []*StatusPage
 	for rows.Next() {
 		p := &StatusPage{}
-		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		pages = append(pages, p)
@@ -59,9 +60,9 @@ func (s *StatusPageStore) List() ([]*StatusPage, error) {
 func (s *StatusPageStore) Get(id int64) (*StatusPage, error) {
 	p := &StatusPage{}
 	err := s.db.QueryRowContext(context.Background(), `
-		SELECT id, name, slug, description, summary_uuid, created_at, updated_at
+		SELECT id, name, slug, description, summary_uuid, is_public, created_at, updated_at
 		FROM status_pages WHERE id = ?
-	`, id).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.CreatedAt, &p.UpdatedAt)
+	`, id).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -72,9 +73,9 @@ func (s *StatusPageStore) Get(id int64) (*StatusPage, error) {
 func (s *StatusPageStore) GetBySlug(slug string) (*StatusPage, error) {
 	p := &StatusPage{}
 	err := s.db.QueryRowContext(context.Background(), `
-		SELECT id, name, slug, description, summary_uuid, created_at, updated_at
+		SELECT id, name, slug, description, summary_uuid, is_public, created_at, updated_at
 		FROM status_pages WHERE slug = ?
-	`, slug).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.CreatedAt, &p.UpdatedAt)
+	`, slug).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -85,9 +86,9 @@ func (s *StatusPageStore) GetBySlug(slug string) (*StatusPage, error) {
 func (s *StatusPageStore) GetBySummaryUUID(uuid string) (*StatusPage, error) {
 	p := &StatusPage{}
 	err := s.db.QueryRowContext(context.Background(), `
-		SELECT id, name, slug, description, summary_uuid, created_at, updated_at
+		SELECT id, name, slug, description, summary_uuid, is_public, created_at, updated_at
 		FROM status_pages WHERE summary_uuid = ? AND summary_uuid != ''
-	`, uuid).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.CreatedAt, &p.UpdatedAt)
+	`, uuid).Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.SummaryUUID, &p.IsPublic, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -98,9 +99,9 @@ func (s *StatusPageStore) GetBySummaryUUID(uuid string) (*StatusPage, error) {
 func (s *StatusPageStore) Create(p *StatusPage) (int64, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO status_pages (name, slug, description, summary_uuid, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, p.Name, p.Slug, p.Description, p.SummaryUUID, now, now)
+		INSERT INTO status_pages (name, slug, description, summary_uuid, is_public, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, p.Name, p.Slug, p.Description, p.SummaryUUID, p.IsPublic, now, now)
 	if err != nil {
 		return 0, err
 	}
@@ -110,8 +111,8 @@ func (s *StatusPageStore) Create(p *StatusPage) (int64, error) {
 // Update modifies an existing status page.
 func (s *StatusPageStore) Update(p *StatusPage) error {
 	_, err := s.db.ExecContext(context.Background(), `
-		UPDATE status_pages SET name=?, slug=?, description=?, summary_uuid=?, updated_at=? WHERE id=?
-	`, p.Name, p.Slug, p.Description, p.SummaryUUID, time.Now().UTC(), p.ID)
+		UPDATE status_pages SET name=?, slug=?, description=?, summary_uuid=?, is_public=?, updated_at=? WHERE id=?
+	`, p.Name, p.Slug, p.Description, p.SummaryUUID, p.IsPublic, time.Now().UTC(), p.ID)
 	return err
 }
 

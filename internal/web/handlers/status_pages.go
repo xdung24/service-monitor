@@ -77,7 +77,7 @@ func (h *Handler) StatusPageCreate(c *gin.Context) {
 	}
 
 	// best-effort: register slug and UUID in shared DB for public endpoint lookups
-	_ = h.users.RegisterStatusPageSlug(page.Slug, h.username(c), page.Name)
+	_ = h.users.RegisterStatusPageSlug(page.Slug, h.username(c), page.Name, page.IsPublic)
 	_ = h.users.RegisterSummaryToken(page.SummaryUUID, h.username(c))
 	_ = spStore.SetMonitors(id, monitorIDs)
 	c.Redirect(http.StatusFound, "/status-pages")
@@ -137,11 +137,11 @@ func (h *Handler) StatusPageUpdate(c *gin.Context) {
 			_ = h.users.UnregisterStatusPageSlug(existing.Slug)
 		}
 		if updated.Slug != "" {
-			_ = h.users.RegisterStatusPageSlug(updated.Slug, h.username(c), updated.Name)
+			_ = h.users.RegisterStatusPageSlug(updated.Slug, h.username(c), updated.Name, updated.IsPublic)
 		}
-	} else if updated.Slug != "" && existing.Name != updated.Name {
-		// Slug unchanged but name changed — keep the index entry current.
-		_ = h.users.RegisterStatusPageSlug(updated.Slug, h.username(c), updated.Name)
+	} else if updated.Slug != "" && (existing.Name != updated.Name || existing.IsPublic != updated.IsPublic) {
+		// Slug unchanged but name or visibility changed — keep the index entry current.
+		_ = h.users.RegisterStatusPageSlug(updated.Slug, h.username(c), updated.Name, updated.IsPublic)
 	}
 	if existing.SummaryUUID != updated.SummaryUUID {
 		if existing.SummaryUUID != "" {
@@ -207,6 +207,10 @@ func (h *Handler) StatusPagePublic(c *gin.Context) {
 	spStore := models.NewStatusPageStore(db)
 	page, err := spStore.GetBySlug(slug)
 	if err != nil || page == nil {
+		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
+		return
+	}
+	if !page.IsPublic {
 		c.HTML(http.StatusNotFound, "error.gohtml", gin.H{"Error": "Status page not found"})
 		return
 	}
@@ -297,6 +301,10 @@ func (h *Handler) StatusPagePublicChartData(c *gin.Context) {
 	spStore := models.NewStatusPageStore(db)
 	page, err := spStore.GetBySlug(slug)
 	if err != nil || page == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !page.IsPublic {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
@@ -402,7 +410,7 @@ func statusPageFromForm(c *gin.Context) (*models.StatusPage, []int64, error) {
 		summaryUUID = generateUUID()
 	}
 
-	page := &models.StatusPage{Name: name, Slug: slug, Description: desc, SummaryUUID: summaryUUID}
+	page := &models.StatusPage{Name: name, Slug: slug, Description: desc, SummaryUUID: summaryUUID, IsPublic: c.PostForm("is_public") == "on"}
 	if name == "" {
 		return page, nil, &formError{"name is required"}
 	}
@@ -451,6 +459,10 @@ func (h *Handler) StatusPagePublicSummary(c *gin.Context) {
 	spStore := models.NewStatusPageStore(db)
 	page, err := spStore.GetBySummaryUUID(uuid)
 	if err != nil || page == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !page.IsPublic {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
@@ -514,4 +526,13 @@ func (h *Handler) StatusPagePublicSummary(c *gin.Context) {
 	}
 	h.pageCache.set(cacheKey, payload, summaryCacheTTL)
 	c.Data(http.StatusOK, "application/json; charset=utf-8", payload)
+}
+
+// PublicStatusPageList renders the public listing of all is_public=true status pages.
+// Route: GET /pages
+func (h *Handler) PublicStatusPageList(c *gin.Context) {
+	pages, _ := h.users.ListAllStatusPageSlugs()
+	c.HTML(http.StatusOK, "public_pages.gohtml", gin.H{
+		"Pages": pages,
+	})
 }

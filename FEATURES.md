@@ -73,7 +73,7 @@ This document tracks which features are implemented, in progress, or planned.
 | Notification providers: Webhook | ✅ Done | |
 | Notification providers: Telegram | ✅ Done | |
 | Notification providers: Email (SMTP) | ✅ Done | |
-| Public status page | ✅ Done | Read-only page at `/status/:slug` (globally unique slug index in shared `users.db`) showing selected monitors with 24h uptime, sparklines, and interactive latency/downtime chart |
+| Public status page | ✅ Done | Read-only page at `/status/:slug` (globally unique slug index in shared `users.db`) showing selected monitors with 24h uptime, sparklines, and interactive latency/downtime chart; visibility controlled per-page via `is_public` toggle (default: disabled) |
 | Maintenance windows | ✅ Done | Suppress alerts during scheduled downtime; per-monitor or global |
 | Tags / labels on monitors | ✅ Done | Color-coded labels; assign to monitors; displayed on dashboard |
 | Proxy management | ✅ Done | Shared proxy config referenced by monitors |
@@ -188,7 +188,9 @@ This document tracks which features are implemented, in progress, or planned.
 | System SMTP (transactional email) | ✅ Done | `SYSTEM_SMTP_*` env vars; fire-and-forget sending; HTML emails with plain-text fallback; BCC support |
 | Transactional emails | ✅ Done | Automated emails for: invite link, password reset, account disabled/enabled, 2FA removed/enabled, password changed by admin, password changed via reset link |
 | Favicon | ✅ Done | SVG favicon embedded from `internal/web/public/`; static files under `public/` served at root with correct content-type |
-| Homepage (landing page) | ✅ Done | Unauthenticated landing page at `/` showing app tagline, feature highlights, and a grid of all public status pages; authenticated visitors are redirected to `/monitors` |
+| Homepage (landing page) | ✅ Done | Unauthenticated landing page at `/` showing app tagline and feature highlights; authenticated visitors are redirected to `/monitors` |
+| Public status pages index | ✅ Done | Unauthenticated `/pages` route listing all `is_public=true` status pages across all users |
+| Docs page (public) | ✅ Done | `/docs` accessible without authentication; `IsAdmin` defaults to false for guests |
 | Notification badge | ✅ Done | Navbar badge showing unread notification-log events |
 | Push notification | ✅ Done | Browser Notification API alerts for new notification-log events |
 | SECRET_KEY minimum length enforcement | ✅ Done | Startup fails when `SECRET_KEY` is shorter than 32 chars |

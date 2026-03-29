@@ -1,0 +1,1 @@
+ALTER TABLE status_page_slugs ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;

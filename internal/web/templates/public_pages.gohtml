@@ -1,0 +1,136 @@
+{{ define "public_pages.gohtml" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Public Status Pages — ServiceConductor</title>
+    {{ template "styles" . }}
+    <style>
+        .home-nav {
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .home-nav-brand { font-weight: 700; font-size: 1.1rem; color: #f1f5f9; text-decoration: none; }
+        .home-nav-brand span { color: #38bdf8; }
+        .home-nav-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+        [data-theme="light"] .home-nav { background: #ffffff; border-bottom-color: #e2e8f0; }
+        [data-theme="light"] .home-nav-brand { color: #0f172a; }
+
+        .pages-header {
+            padding: 3rem 1rem 1.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .pages-header h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+        .pages-header p {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        [data-theme="light"] .pages-header h1 { color: #0f172a; }
+
+        .pages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 0.75rem;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 1rem 3rem;
+        }
+        .page-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.1rem 1.25rem;
+            text-decoration: none;
+            display: block;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .page-card:hover {
+            border-color: #38bdf8;
+            background: #1e3a4f;
+            text-decoration: none;
+        }
+        .page-card-name {
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            margin-bottom: 0.3rem;
+        }
+        .page-card-slug {
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+
+        [data-theme="light"] .page-card { background: #ffffff; border-color: #e2e8f0; }
+        [data-theme="light"] .page-card:hover { background: #eff6ff; border-color: #3b82f6; }
+        [data-theme="light"] .page-card-name { color: #0f172a; }
+
+        .no-pages {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: #64748b;
+            font-size: 0.9rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+    </style>
+    <script>
+    (function(){
+        var t=document.cookie.split(';').map(function(s){return s.trim();}).find(function(s){return s.startsWith('sm_theme=');});
+        if(t&&t.split('=')[1]==='light'){document.documentElement.setAttribute('data-theme','light');}
+    })();
+    </script>
+</head>
+<body>
+
+<nav class="home-nav">
+    <a class="home-nav-brand" href="/">&#x2665; <span>Service</span>Conductor</a>
+    <div class="home-nav-actions">
+        <button id="theme-btn" type="button" title="Toggle theme"
+                onclick="(function(){var d=document.documentElement;var isLight=d.getAttribute('data-theme')==='light';if(isLight){d.removeAttribute('data-theme');document.cookie='sm_theme=;path=/;max-age=-1';}else{d.setAttribute('data-theme','light');document.cookie='sm_theme=light;path=/;max-age=31536000;';}document.querySelector('#theme-btn').blur();})()"
+                style="background:none; border:1px solid #334155; border-radius:0.4rem; color:#94a3b8;
+                       cursor:pointer; font-size:0.875rem; padding:0.25rem 0.55rem; line-height:1;">
+            &#9788;
+        </button>
+        <a href="/docs" style="color:#94a3b8; font-size:0.875rem;">Documents</a>
+        <a href="/login" class="btn btn-primary">Login</a>
+    </div>
+</nav>
+
+<div class="pages-header">
+    <h1>Public Status Pages</h1>
+    <p>Live service status dashboards published by this instance.</p>
+</div>
+
+{{ if .Pages }}
+<div class="pages-grid">
+    {{ range .Pages }}
+    <a class="page-card" href="/status/{{ .Slug | urlquery }}">
+        <div class="page-card-name">{{ .Name | html }}</div>
+        <div class="page-card-slug">/status/{{ .Slug }}</div>
+    </a>
+    {{ end }}
+</div>
+{{ else }}
+<div class="no-pages">No public status pages have been published yet.</div>
+{{ end }}
+
+</body>
+</html>
+{{ end }}

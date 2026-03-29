@@ -85,6 +85,21 @@
             {{ end }}
         </div>
 
+        <div class="form-group" style="border-top:1px solid #334155; padding-top:1rem; margin-top:1.25rem;">
+            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; user-select:none;">
+                <input type="checkbox" name="is_public" value="on"
+                       {{ if .Page.IsPublic }}checked{{ end }}
+                       style="width:1rem; height:1rem; accent-color:#6366f1; cursor:pointer; flex-shrink:0;" />
+                <span style="font-size:0.875rem; color:#e2e8f0; font-weight:600;">Enable public display</span>
+            </label>
+            <p style="font-size:0.775rem; color:#64748b; margin:0.4rem 0 0 1.6rem;">
+                When enabled, this page is accessible at
+                {{ if .Page.Slug }}<code style="color:#6366f1;">/status/{{ .Page.Slug }}</code>{{ else }}<code style="color:#6366f1;">/status/&lt;slug&gt;</code>{{ end }}
+                and listed on <a href="/pages" target="_blank" style="color:#6366f1;">/pages</a>.
+                Disabled by default.
+            </p>
+        </div>
+
         <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
             <button type="submit" class="btn btn-primary">
                 {{ if .IsNew }}Create Status Page{{ else }}Save Changes{{ end }}
